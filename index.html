@@ -1,0 +1,5808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Local PC Data Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<!-- JSZip (needed for folder -> ZIP downloads). Loaded BEFORE our app script. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+:root{
+  --bg:#0c0f1f;
+  --panel:#15193a;
+  --card:#1c2160;
+  --accent:#6c8cff;
+  --accent2:#35ffd2;
+  --danger:#ff5c7a;
+  --text:#eef1ff;
+  --muted:#9aa2ff;
+}
+/* Theme Variants */
+[data-theme="cyberpunk"]{
+  --bg:#0a0214;
+  --panel:#1a0a2a;
+  --card:#2a1040;
+  --accent:#ff006e;
+  --accent2:#00f5ff;
+  --danger:#ff0055;
+  --text:#f0e0ff;
+  --muted:#c78bfa;
+}
+[data-theme="matrix"]{
+  --bg:#000000;
+  --panel:#001a00;
+  --card:#002200;
+  --accent:#00ff00;
+  --accent2:#00ff88;
+  --danger:#ff0000;
+  --text:#00ff00;
+  --muted:#00aa00;
+}
+[data-theme="sunset"]{
+  --bg:#1a0a00;
+  --panel:#2a1508;
+  --card:#3a2010;
+  --accent:#ff7744;
+  --accent2:#ffbb33;
+  --danger:#ff3333;
+  --text:#ffe5cc;
+  --muted:#ffbb88;
+}
+[data-theme="ocean"]{
+  --bg:#010814;
+  --panel:#051830;
+  --card:#0a2848;
+  --accent:#00d4ff;
+  --accent2:#00ffcc;
+  --danger:#ff5577;
+  --text:#e0f5ff;
+  --muted:#66aaff;
+}
+[data-theme="retro"]{
+  --bg:#1a0a28;
+  --panel:#2a1540;
+  --card:#3a2058;
+  --accent:#ff00ff;
+  --accent2:#00ffff;
+  --danger:#ff0080;
+  --text:#ffccff;
+  --muted:#ff66ff;
+}
+[data-theme="neon"]{
+  --bg:#0a0a0a;
+  --panel:#1a1a1a;
+  --card:#2a2a2a;
+  --accent:#ff0080;
+  --accent2:#00ff88;
+  --danger:#ff0040;
+  --text:#ffffff;
+  --muted:#ff66cc;
+}
+[data-theme="forest"]{
+  --bg:#0a1408;
+  --panel:#152818;
+  --card:#1f3c28;
+  --accent:#4ade80;
+  --accent2:#86efac;
+  --danger:#ef4444;
+  --text:#d1fae5;
+  --muted:#86efac;
+}
+[data-theme="space"]{
+  --bg:#030014;
+  --panel:#0a0528;
+  --card:#150a3c;
+  --accent:#8b5cf6;
+  --accent2:#ec4899;
+  --danger:#f43f5e;
+  --text:#e9d5ff;
+  --muted:#c084fc;
+}
+[data-theme="clean"]{
+  --bg:#0f0f0f;
+  --panel:#1a1a1a;
+  --card:#252525;
+  --accent:#3b82f6;
+  --accent2:#06b6d4;
+  --danger:#ef4444;
+  --text:#f5f5f5;
+  --muted:#a3a3a3;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,'Segoe UI Emoji','Noto Color Emoji','Apple Color Emoji',Arial,sans-serif;
+  background:linear-gradient(120deg,#090c1a,#0f1333,#090c1a);
+  color:var(--text);
+  min-height:100vh;
+  transition: background 0.5s ease;
+  position:relative;
+}
+
+/* Force color emojis */
+.file .icon,
+.icon{
+  font-family:'Segoe UI Emoji','Noto Color Emoji','Apple Color Emoji',sans-serif;
+  filter:none !important;
+}
+
+/* Diagonal stripe overlay */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 35px,
+    rgba(255,255,255,0.02) 35px,
+    rgba(255,255,255,0.02) 70px
+  );
+  pointer-events:none;
+  z-index:0;
+}
+
+/* Enchanted glitch shimmer effect (Minecraft style) */
+body::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(138,43,226,0.03) 25%,
+      rgba(0,191,255,0.03) 50%,
+      rgba(138,43,226,0.03) 75%,
+      transparent 100%
+    );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+  pointer-events:none;
+  z-index:1;
+  mix-blend-mode:screen;
+}
+
+@keyframes enchantedShimmer{
+  0%{background-position:0% 0%;}
+  100%{background-position:100% 100%;}
+}
+
+/* Theme-specific shimmer colors */
+[data-theme="cyberpunk"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255,0,110,0.06) 25%,
+    rgba(0,245,255,0.06) 50%,
+    rgba(255,0,110,0.06) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+[data-theme="matrix"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(0,255,0,0.05) 25%,
+    rgba(0,255,136,0.05) 50%,
+    rgba(0,255,0,0.05) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+[data-theme="sunset"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255,119,68,0.05) 25%,
+    rgba(255,187,51,0.05) 50%,
+    rgba(255,119,68,0.05) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+[data-theme="ocean"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(0,212,255,0.05) 25%,
+    rgba(0,255,204,0.05) 50%,
+    rgba(0,212,255,0.05) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+[data-theme="retro"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255,0,255,0.08) 20%,
+    rgba(0,255,255,0.08) 40%,
+    rgba(255,0,255,0.08) 60%,
+    rgba(0,255,255,0.08) 80%,
+    transparent 100%
+  );
+  background-size:300% 300%;
+  animation:enchantedShimmer 8s linear infinite;
+}
+
+[data-theme="neon"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255,0,128,0.12) 25%,
+    rgba(0,255,136,0.12) 50%,
+    rgba(255,0,128,0.12) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 10s linear infinite;
+}
+
+[data-theme="forest"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(74,222,128,0.06) 25%,
+    rgba(134,239,172,0.06) 50%,
+    rgba(74,222,128,0.06) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+[data-theme="space"] body::after{
+  background:linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(139,92,246,0.08) 25%,
+    rgba(236,72,153,0.08) 50%,
+    rgba(139,92,246,0.08) 75%,
+    transparent 100%
+  );
+  background-size:400% 400%;
+  animation:enchantedShimmer 12s linear infinite;
+}
+
+/* Theme Background Gradients */
+[data-theme="cyberpunk"] body{
+  background:linear-gradient(135deg,#0a0214,#1a0a2a,#2a0050,#1a0a2a,#0a0214);
+  background-size:400% 400%;
+  animation:cyberGlow 15s ease infinite;
+}
+[data-theme="cyberpunk"] body::before{
+  background-image:repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 30px,
+    rgba(255,0,110,0.05) 30px,
+    rgba(255,0,110,0.05) 60px
+  );
+}
+
+[data-theme="matrix"] body{
+  background:linear-gradient(180deg,#000000,#001100,#002200,#001100,#000000);
+  background-size:400% 400%;
+  animation:matrixRain 20s linear infinite;
+}
+[data-theme="matrix"] body::before{
+  background-image:repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 25px,
+    rgba(0,255,0,0.03) 25px,
+    rgba(0,255,0,0.03) 50px
+  );
+}
+
+[data-theme="sunset"] body{
+  background:linear-gradient(135deg,#1a0500,#2a1005,#3a1808,#4a2010,#2a1005);
+  background-size:400% 400%;
+  animation:sunsetGlow 18s ease infinite;
+}
+[data-theme="sunset"] body::before{
+  background-image:repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 40px,
+    rgba(255,119,68,0.04) 40px,
+    rgba(255,119,68,0.04) 80px
+  );
+}
+
+[data-theme="ocean"] body{
+  background:linear-gradient(135deg,#010814,#051a30,#0a2848,#051a30,#010814);
+  background-size:400% 400%;
+  animation:oceanWave 22s ease infinite;
+}
+[data-theme="ocean"] body::before{
+  background-image:repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 35px,
+    rgba(0,212,255,0.04) 35px,
+    rgba(0,212,255,0.04) 70px
+  );
+}
+
+[data-theme="retro"] body{
+  background:linear-gradient(135deg,#1a0a28,#2a1050,#3a1878,#4a20a0,#2a1050);
+  background-size:400% 400%;
+  animation:retroPulse 16s ease infinite;
+}
+[data-theme="retro"] body::before{
+  background-image:repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 20px,
+    rgba(255,0,255,0.06) 20px,
+    rgba(255,0,255,0.06) 40px,
+    transparent 40px,
+    transparent 60px,
+    rgba(0,255,255,0.06) 60px,
+    rgba(0,255,255,0.06) 80px
+  );
+}
+
+[data-theme="neon"] body{
+  background:linear-gradient(135deg,#000000,#1a0010,#2a0020,#1a0010,#000000);
+  background-size:400% 400%;
+  animation:neonPulse 14s ease infinite;
+}
+[data-theme="neon"] body::before{
+  background-image:repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 25px,
+    rgba(255,0,128,0.08) 25px,
+    rgba(255,0,128,0.08) 50px,
+    transparent 50px,
+    transparent 75px,
+    rgba(0,255,136,0.08) 75px,
+    rgba(0,255,136,0.08) 100px
+  );
+}
+
+[data-theme="forest"] body{
+  background:linear-gradient(135deg,#051008,#0a1810,#0f2418,#0a1810,#051008);
+  background-size:400% 400%;
+  animation:forestBreeze 20s ease infinite;
+}
+[data-theme="forest"] body::before{
+  background-image:repeating-linear-gradient(
+    60deg,
+    transparent,
+    transparent 30px,
+    rgba(74,222,128,0.04) 30px,
+    rgba(74,222,128,0.04) 60px
+  );
+}
+
+[data-theme="space"] body{
+  background:linear-gradient(135deg,#030014,#0a0528,#150a3c,#200f50,#0a0528);
+  background-size:400% 400%;
+  animation:spaceFloat 18s ease infinite;
+}
+[data-theme="space"] body::before{
+  background-image:repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 35px,
+    rgba(139,92,246,0.05) 35px,
+    rgba(139,92,246,0.05) 70px
+  );
+}
+
+[data-theme="clean"] body{
+  background:linear-gradient(135deg,#0a0a0a,#1a1a1a,#0f0f0f);
+  background-size:200% 200%;
+  animation:cleanFlow 25s ease infinite;
+}
+[data-theme="clean"] body::before{
+  background:none !important;
+}
+[data-theme="clean"] body::after{
+  background:none !important;
+}
+
+/* Animations for backgrounds */
+@keyframes cyberGlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes matrixRain{
+  0%{background-position:0% 0%}
+  100%{background-position:0% 100%}
+}
+@keyframes sunsetGlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes oceanWave{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes retroPulse{
+  0%{background-position:0% 50%}
+  25%{background-position:100% 50%}
+  50%{background-position:50% 100%}
+  75%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes neonPulse{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes forestBreeze{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes spaceFloat{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes cleanFlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes pulse{
+  0%, 100%{transform:scale(1); opacity:1;}
+  50%{transform:scale(1.05); opacity:0.9;}
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px 28px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(10px);
+  position:relative;
+  z-index:10;
+}
+header h1{margin:0;font-size:20px}
+header span{color:var(--accent2)}
+
+/* Noise texture overlay for enchanted feel */
+header::before,
+.sidebar::before,
+.card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  /* Noise texture removed for smooth colors */
+  pointer-events:none;
+  z-index:-1;
+}
+main{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  min-height:calc(100vh - 70px);
+  position:relative;
+  z-index:10;
+}
+
+/* Download progress */
+#downloadOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:none; align-items:center; justify-content:center; z-index:9999;
+}
+#downloadBox{
+  background:#0e1130; padding:20px 22px; border-radius:16px;
+  width:340px; box-shadow:0 20px 40px rgba(0,0,0,.5);
+}
+#downloadBar{
+  height:10px; width:100%; background:rgba(255,255,255,.1);
+  border-radius:999px; overflow:hidden; margin-top:12px;
+}
+#downloadBarInner{
+  height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .2s ease;
+}
+#downloadText{ font-size:13px; color:var(--muted); margin-top:8px }
+
+/* SIDEBAR */
+.sidebar{
+  background:rgba(0,0,0,.25);
+  padding:18px;
+  border-right:1px solid rgba(255,255,255,.08);
+  position:relative;
+}
+.sidebar h3{font-size:14px;color:var(--muted);margin:0 0 10px}
+.sidebar button{
+  width:100%;
+  background:transparent;
+  border:none;
+  color:var(--text);
+  padding:10px 12px;
+  text-align:left;
+  border-radius:10px;
+  cursor:pointer;
+  position:relative;
+  z-index:1;
+}
+.sidebar button:hover{background:rgba(255,255,255,.06)}
+
+/* CONTENT */
+.content{
+  padding:26px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+.card{
+  background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 20px 40px rgba(0,0,0,.35);
+  position:relative;
+  overflow:hidden;
+}
+.card h2{margin:0 0 12px;font-size:18px; position:relative; z-index:1;}
+
+/* FILE MANAGER */
+.file-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+  gap:14px;
+}
+.file-grid.list-view{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.file{
+  background:#0e1130;
+  border-radius:14px;
+  padding:12px;
+  text-align:center;
+  cursor:pointer;
+  position:relative;
+}
+.list-view .file{
+  display:grid;
+  grid-template-columns:40px 40px 1fr 120px 80px;
+  align-items:center;
+  gap:12px;
+  text-align:left;
+  padding:10px 14px;
+}
+.list-view .file .icon{
+  font-size:24px;
+  text-align:center;
+}
+.list-view .file small{
+  text-align:right;
+}
+.file:hover{outline:1px solid var(--accent)}
+.file .icon{font-size:32px}
+.file small{color:var(--muted)}
+
+/* Multi-select checkbox */
+.file-checkbox{
+  position:absolute;
+  top:8px;
+  left:8px;
+  width:22px;
+  height:22px;
+  cursor:pointer;
+  z-index:10;
+  accent-color:var(--accent);
+  opacity:0;
+  transition:opacity .2s;
+}
+.file:hover .file-checkbox,
+.file-checkbox:checked{
+  opacity:1;
+}
+.list-view .file-checkbox{
+  position:static;
+  margin:0;
+  opacity:1;
+}
+.file.selected{
+  outline:2px solid var(--accent) !important;
+  box-shadow:0 0 0 4px rgba(108,140,255,.15) !important;
+  background:rgba(108,140,255,.08) !important;
+  transform:scale(0.98);
+  transition:all .15s;
+}
+
+/* Multi-select toolbar */
+#multiSelectToolbar{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:linear-gradient(135deg, var(--card), var(--panel));
+  padding:14px 20px;
+  border-radius:14px;
+  display:none;
+  align-items:center;
+  gap:10px;
+  box-shadow:0 10px 50px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.1);
+  border:1px solid rgba(108,140,255,.3);
+  z-index:9999;
+  backdrop-filter:blur(10px);
+}
+#multiSelectToolbar.active{
+  display:flex;
+  animation:slideUp .3s ease;
+}
+#multiSelectToolbar .count{
+  font-weight:700;
+  color:var(--accent2);
+  margin-right:6px;
+  font-size:15px;
+}
+@keyframes slideUp{
+  from{
+    transform:translateX(-50%) translateY(20px);
+    opacity:0;
+  }
+  to{
+    transform:translateX(-50%) translateY(0);
+    opacity:1;
+  }
+}
+
+.btn{
+  padding:10px 12px;
+  border-radius:10px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn:hover{filter:brightness(1.05)}
+.btn-primary{background:var(--accent); color:white}
+.btn-accent{background:var(--accent2); color:#081016}
+.btn-soft{background:rgba(255,255,255,.08); color:var(--text)}
+.btn-danger{background:var(--danger); color:white}
+
+.crumb{padding:2px 6px;border-radius:8px;user-select:none}
+.crumb:hover{background:rgba(255,255,255,.08)}
+
+/* STATS */
+.stat{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.stat:last-child{border-bottom:none}
+
+@media(max-width:900px){
+  main{grid-template-columns:1fr}
+  .content{grid-template-columns:1fr}
+}
+
+/* Drag & Drop */
+.file.dragging{opacity:0.5;}
+.file.drag-over{background:var(--accent); transform:scale(1.05);}
+.drop-zone{border:2px dashed var(--accent); padding:20px; border-radius:12px; text-align:center; min-height:100px; display:flex; align-items:center; justify-content:center;}
+
+/* Global drop overlay for file uploads */
+body.dragging-files::after{
+  content:'📁 Drop files here to upload!';
+  position:fixed;
+  inset:20px;
+  background:rgba(108,140,255,0.15);
+  border:3px dashed var(--accent);
+  border-radius:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:2em;
+  font-weight:800;
+  color:var(--accent);
+  pointer-events:none;
+  z-index:9998;
+  backdrop-filter:blur(10px);
+}
+
+/* Context Menu */
+#contextMenu{position:fixed; background:#0e1130; border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:6px; z-index:99999; display:none; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+#contextMenu button{width:100%; background:transparent; border:none; color:var(--text); padding:10px 16px; text-align:left; border-radius:6px; cursor:pointer; font-size:13px;}
+#contextMenu button:hover{background:rgba(255,255,255,.1);}
+
+/* Image Viewer Modal */
+#imageViewer{position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:10000;}
+#imageViewer img{max-width:90%; max-height:90%; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.7);}
+#imageViewer .close-btn{position:absolute; top:20px; right:20px; background:var(--danger); color:white; border:none; padding:12px 20px; border-radius:10px; cursor:pointer; font-weight:700;}
+
+/* Audio Player */
+#audioPlayer{position:fixed; bottom:20px; right:20px; background:#0e1130; padding:16px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.5); display:none; z-index:9000; min-width:300px;}
+#audioPlayer audio{width:100%; margin-top:10px;}
+#audioPlayer .audio-title{font-weight:700; margin-bottom:8px;}
+#audioPlayer .close-audio{float:right; background:var(--danger); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;}
+
+/* Theme Switcher */
+.theme-btn{padding:8px 12px; background:rgba(255,255,255,.08); border:none; border-radius:8px; color:var(--text); cursor:pointer; font-size:12px; margin:0 4px;}
+.theme-btn:hover{background:rgba(255,255,255,.15);}
+.theme-btn.active{background:var(--accent); color:white;}
+
+/* Hide stripes and noise when disabled */
+body.no-stripes::before {
+  background: none !important;
+}
+body.no-stripes::after {
+  background-image: none !important;
+}
+</style>
+
+<!-- Text / Code Viewer Modal -->
+<style>
+#viewerOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.65);
+  display:none; align-items:center; justify-content:center; z-index:10000;
+}
+#viewerBox{
+  background:#0e1130; width:min(900px,92vw); height:min(600px,85vh);
+  border-radius:18px; display:flex; flex-direction:column;
+  box-shadow:0 30px 60px rgba(0,0,0,.6);
+}
+#viewerHeader{
+  padding:12px 16px; display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+#viewerHeader b{font-size:14px}
+#viewerContent{flex:1; padding:14px; overflow:auto;}
+#editorArea{
+  width:100%; height:100%;
+  background:#0b0e22; color:var(--text);
+  border:none; outline:none; resize:none;
+  font-family:ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size:13px; line-height:1.45;
+}
+
+/* File Preview Modal */
+#previewModal{
+  position:fixed; inset:0; background:rgba(0,0,0,.85);
+  display:none; align-items:center; justify-content:center; z-index:11000;
+  backdrop-filter: blur(5px);
+}
+#previewModal.active{display:flex;}
+#previewContainer{
+  background:var(--panel); width:min(95vw, 1200px); height:min(90vh, 900px);
+  border-radius:20px; display:flex; flex-direction:column;
+  box-shadow:0 40px 80px rgba(0,0,0,.8);
+  border:1px solid rgba(255,255,255,.1);
+}
+#previewHeader{
+  padding:16px 20px; display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:var(--card);
+}
+#previewHeader h3{margin:0; font-size:16px; color:var(--text);}
+#previewBody{
+  flex:1; overflow:auto; display:flex; align-items:center; justify-content:center;
+  padding:20px; position:relative;
+}
+#previewBody img{
+  max-width:100%; max-height:100%; object-fit:contain;
+  border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+#previewBody iframe{
+  width:100%; height:100%; border:none; border-radius:12px;
+  background:white;
+}
+#previewBody pre{
+  width:100%; height:100%; margin:0; padding:20px;
+  background:var(--bg); border-radius:12px; overflow:auto;
+  font-family:ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size:13px; line-height:1.6; color:var(--text);
+  white-space:pre-wrap; word-wrap:break-word;
+}
+.preview-btn{
+  padding:8px 16px; border-radius:10px; border:none;
+  font-weight:600; cursor:pointer; transition:all .2s;
+}
+.preview-close{background:var(--danger); color:white;}
+.preview-close:hover{opacity:.85; transform:scale(1.05);}
+.preview-download{background:var(--accent); color:white; margin-right:8px;}
+.preview-download:hover{opacity:.85; transform:scale(1.05);}
+</style>
+</head>
+<body>
+<header>
+  <h1>My<span>PC</span> Dashboard</h1>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <select id="themeSelector" onchange="setTheme(this.value)" style="padding:6px 8px; border-radius:8px; border:none; background:#0e1130; color:var(--text); cursor:pointer;">
+      <option value="clean">⚪ Clean</option>
+      <option value="default">🌙 Default</option>
+      <option value="cyberpunk">⚡ Cyberpunk</option>
+      <option value="matrix">💚 Matrix</option>
+      <option value="sunset">🌅 Sunset</option>
+      <option value="ocean">🌊 Ocean</option>
+      <option value="retro">🕹️ Retro</option>
+      <option value="neon">💥 Neon</option>
+      <option value="forest">🌲 Forest</option>
+      <option value="space">🚀 Space</option>
+    </select>
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; user-select:none;">
+      <input type="checkbox" id="stripesToggle" onchange="toggleStripes()" style="cursor:pointer;">
+      <span>Stripes</span>
+    </label>
+    <select id="engine" style="padding:6px 8px; border-radius:8px; border:none; background:#0e1130; color:var(--text);">
+      <option value="https://www.google.com/search?q=">Google</option>
+      <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+      <option value="https://www.bing.com/search?q=">Bing</option>
+    </select>
+    <input id="webSearch" placeholder="Search the internet…" style="padding:6px 10px; border-radius:8px; border:none; background:#0e1130; color:var(--text);" />
+    <button class="btn btn-primary" onclick="internetSearch()">Search</button>
+    <div id="clock"></div>
+  </div>
+</header>
+
+<!-- Viewer overlay -->
+<div id="viewerOverlay" aria-hidden="true">
+  <div id="viewerBox">
+    <div id="viewerHeader">
+      <b id="viewerTitle">Viewer</b>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-accent" onclick="saveEditor()">Save</button>
+        <button class="btn btn-soft" onclick="downloadSelected()">Download</button>
+        <button class="btn btn-danger" onclick="closeViewer()">Close</button>
+      </div>
+    </div>
+    <div id="viewerContent">
+      <textarea id="editorArea" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- File Preview Modal -->
+<div id="previewModal">
+  <div id="previewContainer">
+    <div id="previewHeader">
+      <h3 id="previewFileName">File Preview</h3>
+      <div>
+        <button class="preview-btn preview-download" onclick="downloadFromPreview()">⬇️ Download</button>
+        <button class="preview-btn preview-close" onclick="closePreview()">✕ Close</button>
+      </div>
+    </div>
+    <div id="previewBody">
+      <!-- Content will be dynamically inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Multi-select Toolbar -->
+<div id="multiSelectToolbar">
+  <span class="count" id="selectedCount">0 selected</span>
+  <button class="btn btn-soft" onclick="selectAllInFolder()" style="padding:8px 12px; font-size:13px;">☑️ Select All</button>
+  <button class="btn btn-accent" onclick="moveSelectedToFolder()" style="padding:8px 12px; font-size:13px;">📁 Move</button>
+  <button class="btn btn-primary" onclick="downloadSelected()" style="padding:8px 12px; font-size:13px;">⬇️ Download</button>
+  <button class="btn btn-danger" onclick="deleteSelectedItems()" style="padding:8px 12px; font-size:13px;">🗑️ Delete</button>
+  <button class="btn btn-soft" onclick="clearSelection()" style="padding:8px 12px; font-size:13px;">✕</button>
+</div>
+
+<!-- Download progress overlay -->
+<div id="downloadOverlay" aria-hidden="true">
+  <div id="downloadBox">
+    <div style="font-weight:800">Preparing download…</div>
+    <div id="downloadBar"><div id="downloadBarInner"></div></div>
+    <div id="downloadText">Starting…</div>
+  </div>
+</div>
+
+<!-- Image Viewer -->
+<div id="imageViewer" onclick="closeImageViewer()">
+  <button class="close-btn" onclick="closeImageViewer()">✕ Close</button>
+  <img id="imageViewerImg" src="" alt="Preview">
+</div>
+
+<!-- Audio Player -->
+<div id="audioPlayer">
+  <button class="close-audio" onclick="closeAudioPlayer()">✕</button>
+  <div class="audio-title" id="audioTitle">Now Playing</div>
+  <audio id="audioElement" controls></audio>
+</div>
+
+<!-- Context Menu (Right Click) -->
+<div id="contextMenu">
+  <button onclick="contextAction('open')">📂 Open</button>
+  <button onclick="contextAction('rename')">✏️ Rename</button>
+  <button onclick="contextAction('download')">⬇️ Download</button>
+  <button onclick="contextAction('delete')">🗑️ Delete</button>
+</div>
+
+<main>
+  <aside class="sidebar">
+    <h3>NAVIGATION</h3>
+    <button onclick="view='files';render()">📁 Files</button>
+    <button onclick="view='vault';render()">🔐 Vault</button>
+    <button onclick="view='timeline';render()">📅 Timeline</button>
+    <button onclick="view='stats';render()">💻 System Info</button>
+    <button onclick="view='games';render()">🎮 Game Essentials</button>
+    <button onclick="view='tools';render()">🧩 Tools & Plugins</button>
+    <button onclick="view='music';render()">🎵 Music</button>
+    <button onclick="view='advanced';render()">⚙️ Advanced</button>
+    <button onclick="view='messages';render()">💬 Messages</button>
+    <button onclick="view='fhutc';render()">📎 FHUTC</button>
+    <button onclick="view='trash';render()">🗑️ Trash</button>
+    <button id="easterEggNav" onclick="view='easteregg';render()" style="display:none; background:linear-gradient(135deg, #ff006e, #00f5ff);">🥚 Easter Egg</button>
+  </aside>
+
+  <section class="content" id="content"></section>
+</main>
+
+<script defer>
+'use strict';
+
+// Make sure inline onclick can access these symbols even in strict setups.
+// (Some environments get weird if scripts fail early; we keep boot very defensive.)
+
+let view = 'files';
+let undoStack = [];
+let redoStack = [];
+const MAX_UNDO = 50;
+let viewMode = localStorage.getItem('viewMode') || 'grid'; // 'grid' or 'list'
+
+// Vault system
+let vaultPassword = localStorage.getItem('vault_password') || null;
+let vaultUnlocked = false;
+let vaultRoot = {
+  id: 'vault_root',
+  name: 'Vault',
+  type: 'folder',
+  children: []
+};
+let currentVaultFolder = vaultRoot;
+let vaultFolderStack = [];
+
+// Trash system
+let trashBin = [];
+
+// Music player system
+let musicLibrary = {
+  id: 'music_root',
+  name: 'Music',
+  type: 'folder',
+  children: []
+};
+let currentMusicFolder = musicLibrary;
+let musicFolderStack = [];
+let currentlyPlaying = null;
+
+// Auto-backup system
+let autoBackupEnabled = localStorage.getItem('auto_backup_enabled') === 'true' || false;
+let lastBackupTime = null;
+
+/* ---------------------------
+   VIEW MODE TOGGLE
+   --------------------------- */
+function toggleView(){
+  viewMode = viewMode === 'grid' ? 'list' : 'grid';
+  localStorage.setItem('viewMode', viewMode);
+  updateFileGrid();
+  
+  const btn = document.getElementById('viewToggle');
+  if(btn) btn.textContent = viewMode === 'grid' ? '📋 List' : '🔲 Grid';
+}
+
+/* ---------------------------
+   UNDO/REDO SYSTEM
+   --------------------------- */
+function saveState(action){
+  // Save current state to undo stack (use structuredClone to preserve File objects)
+  try {
+    undoStack.push({
+      action: action,
+      state: structuredClone(fsRoot),
+      folderStack: [...folderStack],
+      currentFolderId: currentFolder.id
+    });
+  } catch(e) {
+    // Fallback if structuredClone fails - skip undo for this action
+    console.warn('Could not save undo state:', e);
+    return;
+  }
+  
+  // Limit undo history
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+  
+  // Clear redo stack when new action is performed
+  redoStack = [];
+}
+
+function undo(){
+  if(undoStack.length === 0){
+    alert('Nothing to undo!');
+    return;
+  }
+  
+  // Save current state to redo stack
+  try {
+    redoStack.push({
+      state: structuredClone(fsRoot),
+      folderStack: [...folderStack],
+      currentFolderId: currentFolder.id
+    });
+  } catch(e) {
+    console.warn('Could not save redo state:', e);
+  }
+  
+  // Restore previous state
+  const previous = undoStack.pop();
+  Object.assign(fsRoot, previous.state);
+  
+  // Restore folder navigation
+  folderStack = previous.folderStack;
+  currentFolder = findFolderById(fsRoot, previous.currentFolderId) || fsRoot;
+  selectedItem = null;
+  
+  scheduleSave();
+  updateFileGrid();
+  renderInspector();
+  
+  console.log(`Undo: ${previous.action}`);
+}
+
+function redo(){
+  if(redoStack.length === 0){
+    alert('Nothing to redo!');
+    return;
+  }
+  
+  // Save current state to undo stack
+  try {
+    undoStack.push({
+      state: structuredClone(fsRoot),
+      folderStack: [...folderStack],
+      currentFolderId: currentFolder.id
+    });
+  } catch(e) {
+    console.warn('Could not save undo state:', e);
+  }
+  
+  // Restore redo state
+  const next = redoStack.pop();
+  Object.assign(fsRoot, next.state);
+  
+  // Restore folder navigation
+  folderStack = next.folderStack;
+  currentFolder = findFolderById(fsRoot, next.currentFolderId) || fsRoot;
+  selectedItem = null;
+  
+  scheduleSave();
+  updateFileGrid();
+  renderInspector();
+  
+  console.log('Redo');
+}
+
+function findFolderById(root, id){
+  if(root.id === id) return root;
+  if(root.children){
+    for(let child of root.children){
+      if(child.id === id) return child;
+      if(child.type === 'folder'){
+        const found = findFolderById(child, id);
+        if(found) return found;
+      }
+    }
+  }
+  return null;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Undo/Redo
+  if((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey){
+    e.preventDefault();
+    undo();
+  }
+  if((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))){
+    e.preventDefault();
+    redo();
+  }
+  
+  // Multi-select shortcuts
+  if((e.ctrlKey || e.metaKey) && e.key === 'a'){
+    e.preventDefault();
+    selectAllInFolder();
+  }
+  if(e.key === 'Escape'){
+    clearSelection();
+  }
+  if(e.key === 'Delete' && selectedItems.size > 0){
+    e.preventDefault();
+    deleteSelectedItems();
+  }
+});
+
+/* ---------------------------
+   THEME SWITCHER
+   --------------------------- */
+function setTheme(theme){
+  if(theme === 'default'){
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  localStorage.setItem('dashboard_theme', theme);
+  
+  // Update dropdown to show current theme
+  const selector = document.getElementById('themeSelector');
+  if(selector) selector.value = theme;
+}
+
+function toggleStripes(){
+  const checkbox = document.getElementById('stripesToggle');
+  if(checkbox.checked){
+    document.body.classList.remove('no-stripes');
+    localStorage.setItem('stripes_enabled', 'true');
+  } else {
+    document.body.classList.add('no-stripes');
+    localStorage.setItem('stripes_enabled', 'false');
+  }
+}
+
+// Load saved theme on startup
+const savedTheme = localStorage.getItem('dashboard_theme') || 'clean';
+if(savedTheme && savedTheme !== 'default'){
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
+
+// Load saved stripes preference
+const stripesEnabled = localStorage.getItem('stripes_enabled') !== 'false'; // Default is true
+const stripesCheckbox = document.getElementById('stripesToggle');
+if(stripesCheckbox){
+  stripesCheckbox.checked = stripesEnabled;
+  if(!stripesEnabled){
+    document.body.classList.add('no-stripes');
+  }
+}
+// Set dropdown to saved theme after page loads
+window.addEventListener('DOMContentLoaded', () => {
+  const selector = document.getElementById('themeSelector');
+  if(selector) selector.value = savedTheme;
+});
+
+/* ---------------------------
+   IMAGE VIEWER
+   --------------------------- */
+function openImageViewer(file){
+  const viewer = document.getElementById('imageViewer');
+  const img = document.getElementById('imageViewerImg');
+  const url = URL.createObjectURL(file);
+  img.src = url;
+  viewer.style.display = 'flex';
+}
+
+function closeImageViewer(){
+  document.getElementById('imageViewer').style.display = 'none';
+  document.getElementById('imageViewerImg').src = '';
+}
+
+/* ---------------------------
+   AUDIO PLAYER
+   --------------------------- */
+function openAudioPlayer(file, name){
+  const player = document.getElementById('audioPlayer');
+  const audio = document.getElementById('audioElement');
+  const title = document.getElementById('audioTitle');
+  
+  const url = URL.createObjectURL(file);
+  audio.src = url;
+  title.textContent = name;
+  player.style.display = 'block';
+  audio.play();
+}
+
+function closeAudioPlayer(){
+  const player = document.getElementById('audioPlayer');
+  const audio = document.getElementById('audioElement');
+  audio.pause();
+  audio.src = '';
+  player.style.display = 'none';
+}
+
+/* ---------------------------
+   CONTEXT MENU (Right Click)
+   --------------------------- */
+let contextMenuItem = null;
+
+document.addEventListener('contextmenu', (e) => {
+  const fileEl = e.target.closest('.file');
+  if(fileEl && fileEl.dataset.id){
+    e.preventDefault();
+    contextMenuItem = findById(currentFolder, fileEl.dataset.id);
+    const menu = document.getElementById('contextMenu');
+    menu.style.display = 'block';
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+  }
+});
+
+document.addEventListener('click', () => {
+  document.getElementById('contextMenu').style.display = 'none';
+});
+
+function contextAction(action){
+  if(!contextMenuItem) return;
+  selectedItem = contextMenuItem;
+  
+  if(action === 'open'){
+    if(contextMenuItem.type === 'folder') openFolder(contextMenuItem.id);
+    else if(contextMenuItem.file){
+      const ext = contextMenuItem.name.split('.').pop().toLowerCase();
+      if(['jpg','jpeg','png','gif','webp','svg'].includes(ext)){
+        openImageViewer(contextMenuItem.file);
+      } else if(['mp3','wav','ogg','m4a'].includes(ext)){
+        openAudioPlayer(contextMenuItem.file, contextMenuItem.name);
+      } else {
+        openViewer(contextMenuItem);
+      }
+    }
+  } else if(action === 'rename') renameSelected();
+  else if(action === 'download') downloadSelected();
+  else if(action === 'delete') deleteSelected();
+  
+  document.getElementById('contextMenu').style.display = 'none';
+}
+
+/* ---------------------------
+   DRAG & DROP FILE MOVING
+   --------------------------- */
+let draggedItem = null;
+
+function makeDraggable(){
+  document.querySelectorAll('.file').forEach(el => {
+    el.draggable = true;
+    
+    el.addEventListener('dragstart', (e) => {
+      draggedItem = findById(currentFolder, el.dataset.id);
+      el.classList.add('dragging');
+    });
+    
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+    });
+    
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const targetItem = findById(currentFolder, el.dataset.id);
+      if(targetItem && targetItem.type === 'folder' && targetItem !== draggedItem){
+        el.classList.add('drag-over');
+      }
+    });
+    
+    el.addEventListener('dragleave', () => {
+      el.classList.remove('drag-over');
+    });
+    
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      
+      const targetItem = findById(currentFolder, el.dataset.id);
+      if(targetItem && targetItem.type === 'folder' && draggedItem && targetItem !== draggedItem){
+        // Move item
+        const parent = currentFolder.children || [];
+        const idx = parent.indexOf(draggedItem);
+        if(idx > -1){
+          parent.splice(idx, 1);
+          targetItem.children = targetItem.children || [];
+          targetItem.children.push(draggedItem);
+          scheduleSave();
+          render();
+        }
+      }
+    });
+  });
+}
+
+/* ---------------------------
+   BETTER SEARCH (Content Search)
+   --------------------------- */
+function deepSearchFiles(folder, query){
+  const results = [];
+  const q = query.toLowerCase();
+  
+  function search(items){
+    for(let item of (items || [])){
+      // Search by name
+      if(item.name.toLowerCase().includes(q)){
+        results.push(item);
+      }
+      
+      // Search file content (text files only)
+      if(item.type === 'file' && item.file){
+        const ext = item.name.split('.').pop().toLowerCase();
+        if(['txt','js','html','css','json','md'].includes(ext)){
+          try{
+            const reader = new FileReaderSync();
+            const text = reader.readAsText(item.file).toLowerCase();
+            if(text.includes(q) && !results.includes(item)){
+              results.push(item);
+            }
+          } catch(e){}
+        }
+      }
+      
+      // Recurse folders
+      if(item.type === 'folder' && item.children){
+        search(item.children);
+      }
+    }
+  }
+  
+  search(folder.children);
+  return results;
+}
+
+/* ---------------------------
+   FILE COMPRESSION INFO
+   --------------------------- */
+function getFileSize(file){
+  if(!file) return 0;
+  return file.size || 0;
+}
+
+function formatFileSize(bytes){
+  if(bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+/* ---------------------------
+   REAL SYSTEM STATS (Browser API)
+   --------------------------- */
+async function getRealSystemStats(){
+  const stats = {
+    memory: 'N/A',
+    storage: 'N/A',
+    battery: 'N/A',
+    online: navigator.onLine ? 'Online' : 'Offline'
+  };
+  
+  // Memory (if available)
+  if(performance.memory){
+    const used = (performance.memory.usedJSHeapSize / 1048576).toFixed(2);
+    const limit = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2);
+    stats.memory = `${used} / ${limit} MB`;
+  }
+  
+  // Storage
+  if(navigator.storage && navigator.storage.estimate){
+    const est = await navigator.storage.estimate();
+    const used = (est.usage / 1048576).toFixed(2);
+    const quota = (est.quota / 1048576).toFixed(2);
+    stats.storage = `${used} / ${quota} MB`;
+  }
+  
+  // Battery
+  if(navigator.getBattery){
+    const battery = await navigator.getBattery();
+    const level = (battery.level * 100).toFixed(0);
+    const charging = battery.charging ? 'Charging' : 'Discharging';
+    stats.battery = `${level}% (${charging})`;
+  }
+  
+  return stats;
+}
+
+/* ---------------------------
+   GAME LAUNCHER
+   --------------------------- */
+function launchGame(url){
+  if(!url) {
+    alert('No game URL set. Add a URL in the game file properties!');
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function addGameLauncher(){
+  const name = prompt('Game name:');
+  if(!name) return;
+  const url = prompt('Game URL or Steam link (steam://rungameid/XXXXXX):');
+  if(!url) return;
+  
+  const gameFile = makeTextFile(name + '.game', url);
+  currentFolder.children = currentFolder.children || [];
+  currentFolder.children.push({
+    id: uid(),
+    name: gameFile.name,
+    type: 'file',
+    file: gameFile,
+    gameUrl: url
+  });
+  scheduleSave();
+  render();
+}
+
+/* ---------------------------
+   Virtual filesystem (browser-safe)
+   --------------------------- */
+function uid(){
+  try{
+    if(crypto && crypto.randomUUID) return crypto.randomUUID();
+  }catch{}
+  return String(Date.now()) + Math.random().toString(16).slice(2);
+}
+
+function makeTextFile(name, content){
+  return new File([content], name, { type: 'text/plain' });
+}
+
+const fsRoot = {
+  id: 'root',
+  name: 'Home',
+  type: 'folder',
+  children: [
+    { id: uid(), name: 'Games', type: 'folder', children: [
+      { id: uid(), name: 'Essential', type: 'folder', children: [] },
+      { id: uid(), name: 'Mods', type: 'folder', children: [] },
+      { id: uid(), name: 'Saves', type: 'folder', children: [] }
+    ]},
+    { id: uid(), name: 'Projects', type: 'folder', children: [] },
+    { id: uid(), name: 'notes.txt', type: 'file', file: makeTextFile('notes.txt',
+      'Welcome!\n\n' +
+      '- Double-click folders to open\n' +
+      '- Double-click .txt/.py/.md/.log to open editor\n' +
+      '- Use 🏠 Home or ⬅ Up to leave folders\n' +
+      '- Backspace / Esc also goes up (when not typing)\n' +
+      '- Upload files into current folder\n' +
+      '- Select a file then Download\n' +
+      '- Select a folder then Download to get a ZIP\n' +
+      '- + Folder button can also create files (.txt/.py/.pdf/.exe placeholders)\n' +
+      '- In editor: Ctrl+S saves\n\n' +
+      'Messages tab:\n' +
+      '- Run your Python server and set token/host here.\n'
+    ) }
+  ]
+};
+
+let currentFolder = fsRoot;
+let folderStack = [];
+let selectedItem = null;
+let selectedVaultItem = null;
+let selectedMusicItem = null;
+let selectedTrashItem = null;
+let editorDirty = false;
+let downloadInProgress = false;
+
+// Multi-select state
+let selectedItems = new Set();
+let multiSelectMode = false;
+
+// Vault multi-select state
+let selectedVaultItems = new Set();
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function fileIcon(name){
+  const n = String(name || '').toLowerCase();
+  if(n.endsWith('.game')) return '🎮';
+  if(n.endsWith('.py')) return '🐍';
+  if(n.endsWith('.js')) return '💛';
+  if(n.endsWith('.html')) return '🌐';
+  if(n.endsWith('.css')) return '🎨';
+  if(n.endsWith('.json')) return '📋';
+  if(n.endsWith('.txt')||n.endsWith('.md')||n.endsWith('.log')) return '📝';
+  if(n.endsWith('.png')||n.endsWith('.jpg')||n.endsWith('.jpeg')||n.endsWith('.gif')||n.endsWith('.webp')||n.endsWith('.svg')) return '🖼️';
+  if(n.endsWith('.zip')||n.endsWith('.rar')||n.endsWith('.7z')) return '🗜️';
+  if(n.endsWith('.exe')||n.endsWith('.msi')) return '🧩';
+  if(n.endsWith('.mp3')||n.endsWith('.wav')||n.endsWith('.ogg')||n.endsWith('.m4a')) return '🎵';
+  if(n.endsWith('.mp4')||n.endsWith('.mkv')||n.endsWith('.avi')) return '🎬';
+  if(n.endsWith('.pdf')) return '📕';
+  if(n.endsWith('.url')) return '🔗';
+  return '📄';
+}
+
+function humanBytes(bytes){
+  const units = ['B','KB','MB','GB','TB'];
+  let b = Number(bytes || 0);
+  let i = 0;
+  while(b >= 1024 && i < units.length-1){ b /= 1024; i++; }
+  return `${b.toFixed(b<10 && i>0 ? 1 : 0)} ${units[i]}`;
+}
+
+/* ---------------------------
+   Download overlay helpers
+   --------------------------- */
+function showDownloadOverlay(text, progress){
+  const o = document.getElementById('downloadOverlay');
+  const t = document.getElementById('downloadText');
+  const b = document.getElementById('downloadBarInner');
+  if(o){ o.style.display='flex'; o.setAttribute('aria-hidden','false'); }
+  if(t){ t.textContent = text; }
+  if(b){ b.style.width = Math.min(100, Math.max(0, progress*100)) + '%'; }
+}
+function updateDownloadProgress(p){
+  const b = document.getElementById('downloadBarInner');
+  if(b){ b.style.width = Math.min(100, Math.max(0, p*100)) + '%'; }
+}
+function hideDownloadOverlay(){
+  const o = document.getElementById('downloadOverlay');
+  if(o){ o.style.display='none'; o.setAttribute('aria-hidden','true'); }
+}
+
+/* ---------------------------
+   Rendering
+   --------------------------- */
+function render(){
+  const c = document.getElementById('content');
+  if(!c) return;
+  c.innerHTML='';
+
+  updateEasterEggNav(); // Update Easter egg nav visibility
+
+  if(view==='files') return renderFiles(c);
+  if(view==='vault') return renderVault(c);
+  if(view==='music') return renderMusic(c);
+  if(view==='trash') return renderTrash(c);
+  if(view==='timeline') return renderTimeline(c);
+  if(view==='stats') return renderStats(c);
+  if(view==='games') return renderGames(c);
+  if(view==='tools') return renderTools(c);
+  if(view==='advanced') return renderAdvanced(c);
+  if(view==='messages') return renderMessages(c);
+  if(view==='fhutc') return renderFHUTC(c);
+  if(view==='easteregg') return renderEasterEgg(c);
+}
+
+function renderFiles(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+
+  const crumbsArr = ['Home', ...folderStack.map(f=>f.name)];
+  const crumbs = crumbsArr.map((name,i)=>`<span class="crumb" data-index="${i}">${escapeHtml(name)}</span>`).join('  ›  ');
+
+  card.innerHTML=`
+    <h2>File Manager</h2>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 12px;">
+      <select id="searchMode" onchange="updateFileGrid()" style="padding:8px 10px; border-radius:10px; border:none; outline:none; background:#0e1130; color:var(--text);">
+        <option value="all">Everywhere</option>
+        <option value="folder">This folder only</option>
+      </select>
+      <input id="searchBar" placeholder="Search files & folders…" oninput="updateFileGrid()" style="flex:1; min-width:200px; padding:8px 12px; border-radius:10px; border:none; outline:none; background:#0e1130; color:var(--text);">
+      <button class="btn btn-soft" onclick="toggleAdvancedSearch()" id="advSearchBtn">🔍 Filters</button>
+      <button class="btn btn-soft" onclick="clearSearch()">Clear</button>
+    </div>
+    
+    <div id="advancedSearchPanel" style="display:none; margin-bottom:15px; padding:12px; background:#0e1130; border-radius:10px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+        <div>
+          <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">File Type</label>
+          <select id="filterType" onchange="updateFileGrid()" style="width:100%; padding:6px; border-radius:6px; border:none; background:#0a0a0a; color:var(--text);">
+            <option value="">All</option>
+            <option value="folder">Folders</option>
+            <option value="image">Images</option>
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+            <option value="document">Documents</option>
+            <option value="code">Code</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Size</label>
+          <select id="filterSize" onchange="updateFileGrid()" style="width:100%; padding:6px; border-radius:6px; border:none; background:#0a0a0a; color:var(--text);">
+            <option value="">Any</option>
+            <option value="small">< 1 MB</option>
+            <option value="medium">1-10 MB</option>
+            <option value="large">> 10 MB</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Date Modified</label>
+          <select id="filterDate" onchange="updateFileGrid()" style="width:100%; padding:6px; border-radius:6px; border:none; background:#0a0a0a; color:var(--text);">
+            <option value="">Any time</option>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div style="color:var(--muted); font-size:12px; cursor:pointer;">${crumbs}</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-soft" onclick="toggleView()" id="viewToggle">📋 List</button>
+        <button class="btn btn-soft" onclick="undo()" title="Undo (Ctrl+Z)">↶ Undo</button>
+        <button class="btn btn-soft" onclick="redo()" title="Redo (Ctrl+Y)">↷ Redo</button>
+        <button class="btn btn-soft" onclick="goHome()">🏠 Home</button>
+        <button class="btn btn-soft" onclick="goBack()">⬅ Up</button>
+        <button class="btn btn-primary" onclick="newFolder()">+ Folder</button>
+        <button class="btn btn-accent" onclick="uploadFile()">Upload</button>
+        <button class="btn btn-primary" onclick="downloadSelected()">Download</button>
+        <input type="file" id="fileInput" hidden multiple />
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 320px; gap:14px; align-items:start;">
+      <div>
+        <div class="file-grid" id="fileGrid"></div>
+      </div>
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800; letter-spacing:.2px;">Inspector</div>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">Click a file or folder to see actions.</div>
+        <div id="inspector" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  `;
+
+  c.appendChild(card);
+
+  card.querySelectorAll('.crumb').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const idx = Number(el.dataset.index);
+      if(Number.isNaN(idx)) return;
+      if(idx === 0){ goHome(); return; }
+      folderStack = folderStack.slice(0, idx);
+      currentFolder = folderStack[idx-1] || fsRoot;
+      selectedItem = null;
+      updateFileGrid();
+      renderInspector();
+      scheduleSave();
+    });
+  });
+
+  updateFileGrid();
+  renderInspector();
+}
+
+function goHome(){
+  folderStack = [];
+  currentFolder = fsRoot;
+  selectedItem = null;
+  if(view==='files') render();
+}
+
+function goBack(){
+  if(folderStack.length===0) return;
+  folderStack.pop();
+  currentFolder = folderStack.length ? folderStack[folderStack.length-1] : fsRoot;
+  selectedItem = null;
+  updateFileGrid();
+  renderInspector();
+}
+
+function clearSearch(){
+  const sb = document.getElementById('searchBar');
+  if(sb) sb.value = '';
+  document.getElementById('filterType').value = '';
+  document.getElementById('filterSize').value = '';
+  document.getElementById('filterDate').value = '';
+  updateFileGrid();
+}
+
+function toggleAdvancedSearch(){
+  const panel = document.getElementById('advancedSearchPanel');
+  if(panel){
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function currentPathArray(){
+  return folderStack.map(f => ({ id: f.id, name: f.name }));
+}
+
+function globalSearch(root, query){
+  const out = [];
+  function walk(node, path){
+    if(!node || node.type!=='folder') return;
+    for(const child of (node.children||[])){
+      if(String(child.name||'').toLowerCase().includes(query)) out.push({ it: child, path: path.slice() });
+      if(child.type==='folder') walk(child, path.concat([{ id: child.id, name: child.name }]));
+    }
+  }
+  walk(root, []);
+  return out;
+}
+
+function gotoPath(pathIds){
+  folderStack = [];
+  currentFolder = fsRoot;
+  for(const id of pathIds){
+    const next = (currentFolder.children||[]).find(x=>x.id===id && x.type==='folder');
+    if(!next) break;
+    folderStack.push(next);
+    currentFolder = next;
+  }
+  selectedItem = null;
+  if(view==='files') render();
+}
+
+function updateFileGrid(){
+  const g = document.getElementById('fileGrid');
+  if(!g) return;
+  g.innerHTML='';
+  
+  // Apply view mode class
+  g.className = viewMode === 'list' ? 'file-grid list-view' : 'file-grid';
+  
+  // Update toggle button text
+  const btn = document.getElementById('viewToggle');
+  if(btn) btn.textContent = viewMode === 'grid' ? '📋 List' : '🔲 Grid';
+
+  const query = (document.getElementById('searchBar')?.value || '').toLowerCase().trim();
+  const mode = (document.getElementById('searchMode')?.value || 'all');
+
+  let results = [];
+  if(!query){
+    results = (currentFolder.children || []).map(it => ({ it, path: currentPathArray() }));
+  } else if(mode === 'folder'){
+    results = (currentFolder.children || [])
+      .filter(it => String(it.name||'').toLowerCase().includes(query))
+      .map(it => ({ it, path: currentPathArray() }));
+  } else {
+    results = globalSearch(fsRoot, query);
+  }
+  
+  // Apply advanced filters
+  const filterType = document.getElementById('filterType')?.value || '';
+  const filterSize = document.getElementById('filterSize')?.value || '';
+  const filterDate = document.getElementById('filterDate')?.value || '';
+  
+  if(filterType){
+    results = results.filter(({it}) => {
+      if(filterType === 'folder') return it.type === 'folder';
+      if(it.type === 'folder') return false;
+      const ext = String(it.name||'').toLowerCase().split('.').pop();
+      if(filterType === 'image') return ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+      if(filterType === 'audio') return ['mp3','wav','ogg','m4a','flac','aac'].includes(ext);
+      if(filterType === 'video') return ['mp4','mkv','avi','mov'].includes(ext);
+      if(filterType === 'document') return ['txt','pdf','doc','docx','md'].includes(ext);
+      if(filterType === 'code') return ['js','py','html','css','json','jsx','ts'].includes(ext);
+      return false;
+    });
+  }
+  
+  if(filterSize && results.length > 0){
+    results = results.filter(({it}) => {
+      if(it.type === 'folder' || !it.file) return false;
+      const size = getFileSize(it.file);
+      if(filterSize === 'small') return size < 1024 * 1024;
+      if(filterSize === 'medium') return size >= 1024 * 1024 && size <= 10 * 1024 * 1024;
+      if(filterSize === 'large') return size > 10 * 1024 * 1024;
+      return false;
+    });
+  }
+  
+  if(filterDate && results.length > 0){
+    const now = Date.now();
+    results = results.filter(({it}) => {
+      if(!it.file || !it.file.lastModified) return false;
+      const fileTime = it.file.lastModified;
+      if(filterDate === 'today') return (now - fileTime) < 24 * 60 * 60 * 1000;
+      if(filterDate === 'week') return (now - fileTime) < 7 * 24 * 60 * 60 * 1000;
+      if(filterDate === 'month') return (now - fileTime) < 30 * 24 * 60 * 60 * 1000;
+      return false;
+    });
+  }
+
+  results.sort((a,b)=>{
+    if(a.it.type!==b.it.type) return a.it.type==='folder' ? -1 : 1;
+    return String(a.it.name||'').localeCompare(String(b.it.name||''));
+  });
+
+  results.forEach(({it, path})=>{
+    const d = document.createElement('div');
+    d.className='file';
+    d.dataset.id = it.id; // For drag & drop and context menu
+    const icon = it.type==='folder' ? '📁' : fileIcon(it.name);
+    const where = path.length ? ('Home › ' + path.map(x=>x.name).join(' › ')) : 'Home';
+    const fileSize = it.file ? formatFileSize(getFileSize(it.file)) : '';
+    
+    // Add selected class if item is in selection
+    if(selectedItems.has(it.id)){
+      d.classList.add('selected');
+    }
+
+    d.innerHTML=`
+      <input type="checkbox" class="file-checkbox" data-item-id="${it.id}" ${selectedItems.has(it.id) ? 'checked' : ''}>
+      <div class="icon">${icon}</div>
+      <div style="font-weight:700; word-break:break-word;">${escapeHtml(it.name)}</div>
+      <small>${it.type}${fileSize ? ' • ' + fileSize : ''}${(query && mode==='all') ? ' • ' + escapeHtml(where) : ''}</small>
+    `;
+    
+    // Checkbox click handler
+    const checkbox = d.querySelector('.file-checkbox');
+    checkbox.onclick = (e) => {
+      e.stopPropagation();
+      toggleItemSelection(it.id);
+    };
+
+    d.onclick = (e) => {
+      // Don't select if clicking checkbox
+      if(e.target.classList.contains('file-checkbox')) return;
+      
+      // If Ctrl/Cmd key is held, toggle selection
+      if(e.ctrlKey || e.metaKey){
+        toggleItemSelection(it.id);
+        return;
+      }
+      
+      selectedItem = it;
+      selectedItem.__path = path.map(x=>x.id);
+      renderInspector();
+      updateFileGrid();
+    };
+
+    d.ondblclick = () => {
+      if(it.type==='folder'){
+        if(query && mode==='all') gotoPath(path.map(x=>x.id));
+        openFolder(it.id);
+      } else {
+        if(query && mode==='all'){
+          gotoPath(path.map(x=>x.id));
+          selectedItem = (currentFolder.children||[]).find(x=>x.id===it.id) || it;
+          renderInspector();
+        }
+        const lname = String(it.name||'').toLowerCase();
+        const ext = lname.split('.').pop();
+        
+        // Game launcher
+        if(ext === 'game' && it.file){
+          it.file.text().then(url => {
+            launchGame(url.trim());
+          });
+        }
+        // Text editor for editable files
+        else if(['txt','py','md','log','js','html','css','json'].includes(ext)){
+          openViewer(it);
+        }
+        // Preview for images and PDFs
+        else if(['jpg','jpeg','png','gif','webp','svg','bmp','pdf'].includes(ext) && it.file){
+          openPreview(it.file, it.name);
+        }
+        // Image viewer (fallback for old implementation)
+        else if(['jpg','jpeg','png','gif','webp','svg'].includes(ext) && it.file){
+          openImageViewer(it.file);
+        }
+        // Audio player
+        else if(['mp3','wav','ogg','m4a'].includes(ext) && it.file){
+          openAudioPlayer(it.file, it.name);
+        }
+        // Download
+        else {
+          downloadItem(it);
+        }
+      }
+    };
+
+    if(selectedItem && selectedItem.id === it.id){
+      d.style.outline = '1px solid var(--accent2)';
+      d.style.boxShadow = '0 0 0 2px rgba(53,255,210,.12)';
+    }
+
+    g.appendChild(d);
+  });
+  
+  // Enable drag & drop
+  makeDraggable();
+}
+
+function openFolder(id){
+  const target = (currentFolder.children||[]).find(x=>x.id===id && x.type==='folder');
+  if(!target) return;
+  folderStack.push(target);
+  currentFolder = target;
+  selectedItem = null;
+  updateFileGrid();
+  renderInspector();
+  scheduleSave();
+}
+
+/* ---------------------------
+   File operations
+   --------------------------- */
+function newFolder(){
+  const choice = prompt(
+    'Create what?\n\n' +
+    '1 = Folder\n' +
+    '2 = Empty .txt file\n' +
+    '3 = Empty .py file\n' +
+    '4 = Empty .pdf placeholder\n' +
+    '5 = Empty .exe placeholder\n\n' +
+    'Enter number:'
+  );
+  if(!choice) return;
+
+  currentFolder.children = currentFolder.children || [];
+
+  const addFile = (name, content, mime) => {
+    const f = new File([content], name, { type: mime });
+    currentFolder.children.push({ id: uid(), name, type:'file', file: f });
+  };
+
+  switch(String(choice).trim()){
+    case '1': {
+      const n = prompt('Folder name');
+      if(!n) return;
+      const name = n.trim();
+      if(!name) return;
+      currentFolder.children.push({ id: uid(), name, type:'folder', children: [] });
+      break;
+    }
+    case '2': {
+      const n = prompt('File name (.txt)', 'newfile.txt') || 'newfile.txt';
+      const name = n.toLowerCase().endsWith('.txt') ? n : (n + '.txt');
+      addFile(name, '', 'text/plain');
+      break;
+    }
+    case '3': {
+      const n = prompt('File name (.py)', 'script.py') || 'script.py';
+      const name = n.toLowerCase().endsWith('.py') ? n : (n + '.py');
+      addFile(name, '#!/usr/bin/env python3\n', 'text/x-python');
+      break;
+    }
+    case '4': {
+      const n = prompt('File name (.pdf)', 'document.pdf') || 'document.pdf';
+      const name = n.toLowerCase().endsWith('.pdf') ? n : (n + '.pdf');
+      addFile(name, '%PDF-1.4\n% Placeholder PDF\n', 'application/pdf');
+      break;
+    }
+    case '5': {
+      const n = prompt('File name (.exe)', 'program.exe') || 'program.exe';
+      const name = n.toLowerCase().endsWith('.exe') ? n : (n + '.exe');
+      addFile(name, 'This is a placeholder executable.\n', 'application/octet-stream');
+      break;
+    }
+    default:
+      alert('Invalid choice');
+      return;
+  }
+
+  updateFileGrid();
+  renderInspector();
+  scheduleSave();
+}
+
+function uploadFile(){
+  const i = document.getElementById('fileInput');
+  if(!i) return;
+  i.onchange = () => {
+    currentFolder.children = currentFolder.children || [];
+    [...i.files].forEach(f=>currentFolder.children.push({ id: uid(), name:f.name, type:'file', file: f }));
+    i.value = '';
+    updateFileGrid();
+    renderInspector();
+    scheduleSave();
+  };
+  i.click();
+}
+
+function renameSelected(){
+  if(!selectedItem) return;
+  const oldName = selectedItem.name;
+  const n = prompt('New name', selectedItem.name);
+  if(!n) return;
+  const name = n.trim();
+  if(!name) return;
+  
+  saveState(`Rename "${oldName}" to "${name}"`);
+  
+  selectedItem.name = name;
+
+  if(selectedItem.type==='file' && selectedItem.file){
+    try{
+      const old = selectedItem.file;
+      selectedItem.file = new File([old], name, { type: old.type || 'application/octet-stream' });
+    } catch{}
+  }
+
+  renderInspector();
+  updateFileGrid();
+  scheduleSave();
+}
+
+function deleteSelected(){
+  if(!selectedItem) return;
+  const ok = confirm(`Move "${selectedItem.name}" to trash?`);
+  if(!ok) return;
+  
+  saveState(`Delete "${selectedItem.name}"`);
+  
+  // Move to trash instead of permanent delete
+  trashBin.push({
+    ...selectedItem,
+    deletedFrom: currentFolder.id,
+    deletedAt: Date.now()
+  });
+  
+  currentFolder.children = (currentFolder.children||[]).filter(x=>x.id!==selectedItem.id);
+  selectedItem = null;
+  renderInspector();
+  updateFileGrid();
+  scheduleSave();
+}
+
+/* ---------------------------
+   VAULT Helper Functions
+   --------------------------- */
+function updateVaultGrid(){
+  const g = document.getElementById('vaultGrid');
+  if(!g) return;
+  g.innerHTML='';
+  
+  const items = currentVaultFolder.children || [];
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className='file';
+    const icon = it.type==='folder' ? '📁' : fileIcon(it.name);
+    
+    // Add selected class if item is in selection
+    if(selectedVaultItems.has(it.id)){
+      d.classList.add('selected');
+    }
+    
+    d.innerHTML=`
+      <input type="checkbox" class="file-checkbox" data-item-id="${it.id}" ${selectedVaultItems.has(it.id) ? 'checked' : ''}>
+      <div class="icon">${icon}</div>
+      <div style="font-weight:700;">${escapeHtml(it.name)}</div>
+      <small>${it.type}</small>
+    `;
+    
+    // Checkbox click handler
+    const checkbox = d.querySelector('.file-checkbox');
+    checkbox.onclick = (e) => {
+      e.stopPropagation();
+      toggleVaultItemSelection(it.id);
+    };
+    
+    d.onclick = (e) => {
+      // Don't select if clicking checkbox
+      if(e.target.classList.contains('file-checkbox')) return;
+      
+      // If Ctrl/Cmd key is held, toggle selection
+      if(e.ctrlKey || e.metaKey){
+        toggleVaultItemSelection(it.id);
+        return;
+      }
+      
+      selectedVaultItem = it;
+      renderVaultInspector();
+      updateVaultGrid();
+    };
+    
+    d.ondblclick = () => {
+      if(it.type === 'folder'){
+        vaultFolderStack.push(it);
+        currentVaultFolder = it;
+        selectedVaultItem = null;
+        updateVaultGrid();
+        renderVaultInspector();
+      } else if(it.type === 'file' && it.file){
+        // Preview file on double-click
+        openPreview(it.file, it.name);
+      }
+    };
+    
+    // Highlight selected
+    if(selectedVaultItem && selectedVaultItem.id === it.id){
+      d.style.outline = '1px solid var(--accent2)';
+      d.style.boxShadow = '0 0 0 2px rgba(53,255,210,.12)';
+    }
+    
+    g.appendChild(d);
+  });
+}
+
+function vaultGoHome(){
+  vaultFolderStack = [];
+  currentVaultFolder = vaultRoot;
+  updateVaultGrid();
+}
+
+function vaultGoBack(){
+  if(vaultFolderStack.length === 0) return;
+  vaultFolderStack.pop();
+  currentVaultFolder = vaultFolderStack.length ? vaultFolderStack[vaultFolderStack.length-1] : vaultRoot;
+  updateVaultGrid();
+}
+
+function vaultNewFolder(){
+  const choice = prompt(
+    'Create what?\n\n' +
+    '1 = Folder\n' +
+    '2 = Empty .txt file\n' +
+    '3 = Empty .py file\n' +
+    '4 = Empty .pdf placeholder\n' +
+    '5 = Empty .exe placeholder\n\n' +
+    'Enter number:'
+  );
+  if(!choice) return;
+
+  currentVaultFolder.children = currentVaultFolder.children || [];
+
+  const addFile = (name, content, mime) => {
+    const f = new File([content], name, { type: mime });
+    currentVaultFolder.children.push({ id: uid(), name, type:'file', file: f });
+  };
+
+  switch(String(choice).trim()){
+    case '1': {
+      const n = prompt('Folder name');
+      if(!n) return;
+      const name = n.trim();
+      if(!name) return;
+      currentVaultFolder.children.push({ id: uid(), name, type:'folder', children: [] });
+      break;
+    }
+    case '2': {
+      const n = prompt('File name (.txt)', 'newfile.txt') || 'newfile.txt';
+      const name = n.toLowerCase().endsWith('.txt') ? n : (n + '.txt');
+      addFile(name, '', 'text/plain');
+      break;
+    }
+    case '3': {
+      const n = prompt('File name (.py)', 'newfile.py') || 'newfile.py';
+      const name = n.toLowerCase().endsWith('.py') ? n : (n + '.py');
+      addFile(name, '# Python file\n', 'text/x-python');
+      break;
+    }
+    case '4': {
+      const n = prompt('File name (.pdf)', 'document.pdf') || 'document.pdf';
+      const name = n.toLowerCase().endsWith('.pdf') ? n : (n + '.pdf');
+      addFile(name, '%PDF-placeholder', 'application/pdf');
+      break;
+    }
+    case '5': {
+      const n = prompt('File name (.exe)', 'program.exe') || 'program.exe';
+      const name = n.toLowerCase().endsWith('.exe') ? n : (n + '.exe');
+      addFile(name, 'MZ-placeholder', 'application/x-msdownload');
+      break;
+    }
+    default: {
+      alert('Invalid choice. Please enter 1, 2, 3, 4, or 5.');
+      return;
+    }
+  }
+  updateVaultGrid();
+  scheduleSave();
+}
+
+function vaultUploadFile(){
+  const input = document.getElementById('vaultFileInput');
+  if(!input) return;
+  input.onchange = (e) => {
+    const files = Array.from(e.target.files || []);
+    currentVaultFolder.children = currentVaultFolder.children || [];
+    
+    files.forEach(file => {
+      // Check for duplicates
+      const existing = currentVaultFolder.children.find(x => x.name === file.name && x.type === 'file');
+      if(existing){
+        const replace = confirm(`"${file.name}" already exists in vault. Replace it?`);
+        if(replace){
+          existing.file = file; // Replace the file
+        }
+      } else {
+        // Add new file
+        currentVaultFolder.children.push({
+          id: uid(),
+          name: file.name,
+          type: 'file',
+          file: file
+        });
+      }
+    });
+    
+    updateVaultGrid();
+    scheduleSave();
+    input.value = '';
+  };
+  input.click();
+}
+
+/* ---------------------------
+   TRASH Helper Functions
+   --------------------------- */
+function updateTrashGrid(){
+  const g = document.getElementById('trashGrid');
+  if(!g) return;
+  g.innerHTML='';
+  
+  if(trashBin.length === 0){
+    g.innerHTML = '<div style="padding:40px; text-align:center; color:var(--muted);">Trash is empty</div>';
+    return;
+  }
+  
+  trashBin.forEach((it, idx) => {
+    const d = document.createElement('div');
+    d.className='file';
+    const icon = it.type==='folder' ? '📁' : fileIcon(it.name);
+    const date = new Date(it.deletedAt).toLocaleString();
+    
+    // Show where file came from
+    let source = '📁 Files';
+    if(it.fromVault) source = '🔐 Vault';
+    if(it.fromMusic) source = '🎵 Music';
+    
+    d.innerHTML=`
+      <div class="icon">${icon}</div>
+      <div style="font-weight:700;">${escapeHtml(it.name)}</div>
+      <small>${source} • ${date}</small>
+    `;
+    
+    d.onclick = () => {
+      selectedTrashItem = { item: it, index: idx };
+      renderTrashInspector();
+      updateTrashGrid();
+    };
+    
+    // Highlight selected
+    if(selectedTrashItem && selectedTrashItem.index === idx){
+      d.style.outline = '1px solid var(--accent2)';
+      d.style.boxShadow = '0 0 0 2px rgba(53,255,210,.12)';
+    }
+    
+    g.appendChild(d);
+  });
+}
+
+/* ---------------------------
+   MUSIC Helper Functions
+   --------------------------- */
+function updateMusicGrid(){
+  const g = document.getElementById('musicGrid');
+  if(!g) return;
+  g.innerHTML='';
+  
+  const items = currentMusicFolder.children || [];
+  
+  console.log('Music library:', musicLibrary);
+  console.log('Current music folder:', currentMusicFolder);
+  console.log('Music items:', items);
+  
+  if(items.length === 0){
+    g.innerHTML = '<div style="padding:60px 40px; text-align:center; color:var(--muted); font-size:15px; line-height:1.6;">📀 No music files yet.<br><br>Click the "Upload Music" button above to add your favorite songs!</div>';
+    return;
+  }
+  
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className='file';
+    const icon = it.type==='folder' ? '📁' : '🎵';
+    
+    d.innerHTML=`
+      <div class="icon">${icon}</div>
+      <div style="font-weight:700;">${escapeHtml(it.name)}</div>
+      <small>${it.type}</small>
+    `;
+    
+    d.onclick = () => {
+      selectedMusicItem = it;
+      renderMusicInspector();
+      updateMusicGrid();
+    };
+    
+    d.ondblclick = () => {
+      if(it.type === 'folder'){
+        musicFolderStack.push(it);
+        currentMusicFolder = it;
+        selectedMusicItem = null;
+        updateMusicGrid();
+        scheduleSave();
+        renderMusicInspector();
+      } else if(it.file){
+        openAudioPlayer(it.file, it.name);
+        currentlyPlaying = it;
+      }
+    };
+    
+    // Highlight selected
+    if(selectedMusicItem && selectedMusicItem.id === it.id){
+      d.style.outline = '1px solid var(--accent2)';
+      d.style.boxShadow = '0 0 0 2px rgba(53,255,210,.12)';
+    }
+    
+    g.appendChild(d);
+  });
+}
+
+function musicGoHome(){
+  musicFolderStack = [];
+  currentMusicFolder = musicLibrary;
+  updateMusicGrid();
+}
+
+function musicGoBack(){
+  if(musicFolderStack.length === 0) return;
+  musicFolderStack.pop();
+  currentMusicFolder = musicFolderStack.length ? musicFolderStack[musicFolderStack.length-1] : musicLibrary;
+  updateMusicGrid();
+}
+
+function musicNewFolder(){
+  const name = prompt('Playlist name:');
+  if(!name) return;
+  currentMusicFolder.children = currentMusicFolder.children || [];
+  currentMusicFolder.children.push({
+    id: uid(),
+    name: name.trim(),
+    type: 'folder',
+    children: []
+  });
+  updateMusicGrid();
+  scheduleSave();
+}
+
+function musicUploadFile(){
+  console.log('musicUploadFile called!');
+  console.log('currentMusicFolder before upload:', currentMusicFolder);
+  
+  const input = document.getElementById('musicFileInput');
+  if(!input) {
+    console.error('musicFileInput not found!');
+    return;
+  }
+  
+  console.log('File input found:', input);
+  
+  input.onchange = (e) => {
+    console.log('File input changed!');
+    const files = Array.from(e.target.files || []);
+    console.log('Files selected:', files);
+    
+    currentMusicFolder.children = currentMusicFolder.children || [];
+    console.log('currentMusicFolder.children before:', currentMusicFolder.children);
+    
+    // Filter only audio files
+    const audioFiles = files.filter(f => {
+      const ext = f.name.split('.').pop().toLowerCase();
+      return ['mp3','wav','ogg','m4a','flac','aac'].includes(ext);
+    });
+    
+    console.log('Audio files filtered:', audioFiles);
+    
+    if(audioFiles.length < files.length){
+      alert(`⚠️ Only audio files allowed! ${files.length - audioFiles.length} file(s) skipped.`);
+    }
+    
+    audioFiles.forEach(file => {
+      const newFile = {
+        id: uid(),
+        name: file.name,
+        type: 'file',
+        file: file
+      };
+      console.log('Adding to music:', newFile);
+      currentMusicFolder.children.push(newFile);
+    });
+    
+    console.log('currentMusicFolder.children after:', currentMusicFolder.children);
+    console.log('musicLibrary after:', musicLibrary);
+    
+    updateMusicGrid();
+    scheduleSave();
+    input.value = '';
+    
+    alert(`✅ Added ${audioFiles.length} song(s) to Music library!`);
+  };
+  
+  input.click();
+  console.log('File picker opened');
+}
+
+function renderMusicInspector(){
+  const box = document.getElementById('musicInspector');
+  if(!box) return;
+
+  if(!selectedMusicItem){
+    box.innerHTML = `
+      <div style="padding:10px; border-radius:12px; background:rgba(255,255,255,.04); color:var(--muted); font-size:12px;">
+        No selection. Click a song or playlist.
+      </div>
+    `;
+    return;
+  }
+
+  const it = selectedMusicItem;
+  box.innerHTML=`
+    <div style="font-weight:800; margin-bottom:8px;">${escapeHtml(it.name)}</div>
+    <div style="color:var(--muted); font-size:12px; margin-bottom:14px;">Type: ${it.type}</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      ${it.type === 'file' ? '<button class="btn btn-primary" style="width:100%;" onclick="playMusicItem()">▶️ Play</button>' : ''}
+      <button class="btn btn-soft" style="width:100%;" onclick="renameMusicItem()">✏️ Rename</button>
+      ${it.type === 'file' ? '<button class="btn btn-accent" style="width:100%;" onclick="downloadMusicItem()">⬇️ Download</button>' : ''}
+      <button class="btn btn-danger" style="width:100%;" onclick="deleteMusicItem()">🗑️ Delete</button>
+    </div>
+  `;
+}
+
+function playMusicItem(){
+  if(!selectedMusicItem || !selectedMusicItem.file) return;
+  openAudioPlayer(selectedMusicItem.file, selectedMusicItem.name);
+  currentlyPlaying = selectedMusicItem;
+}
+
+function renameMusicItem(){
+  if(!selectedMusicItem) return;
+  const n = prompt('New name', selectedMusicItem.name);
+  if(!n) return;
+  const name = n.trim();
+  if(!name) return;
+  
+  selectedMusicItem.name = name;
+  if(selectedMusicItem.type==='file' && selectedMusicItem.file){
+    try{
+      const old = selectedMusicItem.file;
+      selectedMusicItem.file = new File([old], name, { type: old.type || 'application/octet-stream' });
+    } catch{}
+  }
+  
+  renderMusicInspector();
+  updateMusicGrid();
+  scheduleSave();
+}
+
+function deleteMusicItem(){
+  if(!selectedMusicItem) return;
+  const ok = confirm(`Move "${selectedMusicItem.name}" to trash?`);
+  if(!ok) return;
+  
+  // Move to trash instead of permanent delete
+  trashBin.push({
+    ...selectedMusicItem,
+    deletedFrom: 'music_' + currentMusicFolder.id,
+    deletedAt: Date.now(),
+    fromMusic: true
+  });
+  
+  currentMusicFolder.children = (currentMusicFolder.children||[]).filter(x=>x.id!==selectedMusicItem.id);
+  selectedMusicItem = null;
+  renderMusicInspector();
+  updateMusicGrid();
+  scheduleSave();
+}
+
+function downloadMusicItem(){
+  if(!selectedMusicItem || !selectedMusicItem.file) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(selectedMusicItem.file);
+  a.download = selectedMusicItem.name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ---------------------------
+   Inspector
+   --------------------------- */
+function renderInspector(){
+  const box = document.getElementById('inspector');
+  if(!box) return;
+
+  if(!selectedItem){
+    box.innerHTML = `
+      <div style="padding:10px; border-radius:12px; background:rgba(255,255,255,.04); color:var(--muted); font-size:12px;">
+        No selection. Tip: double-click folders to open. Double-click .txt/.py/.md/.log to open the editor.
+      </div>
+    `;
+    return;
+  }
+
+  const canJump = Array.isArray(selectedItem.__path) && selectedItem.__path.length>0;
+  const jumpBtn = canJump
+    ? `<button class="btn btn-primary" onclick="gotoPath(selectedItem.__path)">Jump to location</button>`
+    : '';
+
+  if(selectedItem.type==='folder'){
+    const count = (selectedItem.children||[]).length;
+    box.innerHTML = `
+      <div style="font-size:14px; font-weight:800;">📁 ${escapeHtml(selectedItem.name)}</div>
+      <div style="color:var(--muted); font-size:12px; margin-top:6px;">Items: ${count}</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        ${jumpBtn}
+        <button class="btn btn-accent" onclick="openFolder('${selectedItem.id}')">Open</button>
+        <button class="btn btn-soft" onclick="renameSelected()">Rename</button>
+        <button class="btn btn-danger" onclick="deleteSelected()">Delete</button>
+      </div>
+      <div style="margin-top:12px; color:var(--muted); font-size:12px;">Download will export this folder as <b>${escapeHtml(selectedItem.name)}.zip</b>.</div>
+    `;
+  } else {
+    const f = selectedItem.file;
+    const size = f && typeof f.size==='number' ? humanBytes(f.size) : '—';
+    const type = f && f.type ? f.type : 'unknown';
+    const lname = String(selectedItem.name||'').toLowerCase();
+    const openBtn = (lname.endsWith('.txt') || lname.endsWith('.py') || lname.endsWith('.md') || lname.endsWith('.log'))
+      ? `<button class="btn btn-accent" onclick="openViewer(selectedItem)">Open</button>`
+      : '';
+    
+    // Preview button for images, PDFs, and text files
+    const previewBtn = f ? `<button class="btn btn-accent" onclick="openPreview(selectedItem.file, selectedItem.name)">👁️ Preview</button>` : '';
+
+    box.innerHTML = `
+      <div style="font-size:14px; font-weight:800;">${fileIcon(selectedItem.name)} ${escapeHtml(selectedItem.name)}</div>
+      <div style="color:var(--muted); font-size:12px; margin-top:6px;">Type: ${escapeHtml(type)} • Size: ${escapeHtml(size)}</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        ${jumpBtn}
+        ${previewBtn}
+        ${openBtn}
+        <button class="btn btn-primary" onclick="downloadSelected()">Download</button>
+        <button class="btn btn-soft" onclick="renameSelected()">Rename</button>
+        <button class="btn btn-danger" onclick="deleteSelected()">Delete</button>
+      </div>
+    `;
+  }
+}
+
+/* ---------------------------
+   Navigation shortcuts
+   --------------------------- */
+document.addEventListener('keydown', (e)=>{
+  // editor save
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
+    const overlay = document.getElementById('viewerOverlay');
+    const open = overlay && overlay.style.display === 'flex';
+    if(open){
+      e.preventDefault();
+      saveEditor();
+      return;
+    }
+  }
+
+  if(view !== 'files') return;
+  const overlay = document.getElementById('viewerOverlay');
+  const editorOpen = overlay && overlay.style.display === 'flex';
+  if(editorOpen) return; // don't navigate folders while editor is open
+
+  const active = document.activeElement;
+  const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  if(typing) return;
+
+  if(e.key === 'Backspace' || e.key === 'Escape'){
+    e.preventDefault();
+    if(e.shiftKey) goHome();
+    else goBack();
+  }
+});
+
+/* ---------------------------
+   Downloading (single at a time)
+   --------------------------- */
+function downloadSelected(){
+  if(!selectedItem) return;
+  if(downloadInProgress){
+    alert('A download is already in progress. Please wait.');
+    return;
+  }
+  if(selectedItem.type==='folder') return exportFolderAsZip(selectedItem);
+  return downloadItem(selectedItem);
+}
+
+function downloadItem(item){
+  if(downloadInProgress) return;
+  const f = item.file;
+  if(!f){
+    alert('This file has no data attached. Upload it again to enable download.');
+    return;
+  }
+
+  downloadInProgress = true;
+  showDownloadOverlay('Preparing file download…', 0.15);
+
+  const url = URL.createObjectURL(f);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = item.name || f.name || 'download';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  showDownloadOverlay('Starting download…', 0.6);
+
+  setTimeout(()=>{
+    URL.revokeObjectURL(url);
+    showDownloadOverlay('Done!', 1);
+    setTimeout(()=>{
+      hideDownloadOverlay();
+      downloadInProgress = false;
+    }, 350);
+  }, 900);
+}
+
+/* ---------------------------
+   ZIP EXPORT
+   --------------------------- */
+async function exportFolderAsZip(folder){
+  if(!folder || folder.type!=='folder') return;
+  if(downloadInProgress) return;
+  if(typeof JSZip !== 'function'){
+    alert('ZIP library failed to load. Please refresh and try again.');
+    return;
+  }
+
+  downloadInProgress = true;
+  showDownloadOverlay('Scanning files…', 0);
+
+  const zip = new JSZip();
+  let totalFiles = 0;
+  let processed = 0;
+
+  function count(node){
+    if(node.type==='file' && node.file) totalFiles++;
+    if(node.type==='folder') (node.children||[]).forEach(count);
+  }
+  count(folder);
+
+  function addToZip(node, zipFolder){
+    if(node.type==='folder'){
+      const zf = zipFolder.folder(node.name);
+      (node.children||[]).forEach(ch=>addToZip(ch, zf));
+    } else if(node.type==='file' && node.file){
+      zipFolder.file(node.name, node.file);
+      processed++;
+      updateDownloadProgress((processed / Math.max(totalFiles,1)) * 0.85);
+    }
+  }
+
+  addToZip(folder, zip);
+  showDownloadOverlay('Compressing…', 0.85);
+
+  const blob = await zip.generateAsync({ type:'blob' }, meta=>{
+    updateDownloadProgress(0.85 + (meta.percent/100) * 0.15);
+  });
+
+  showDownloadOverlay('Finalizing…', 1);
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = folder.name + '.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+
+  setTimeout(()=>{
+    hideDownloadOverlay();
+    downloadInProgress = false;
+  }, 350);
+}
+
+/* ---------------------------
+   Editor / Viewer
+   --------------------------- */
+const editorArea = document.getElementById('editorArea');
+if(editorArea){
+  editorArea.addEventListener('input', ()=>{ editorDirty = true; });
+}
+
+function openViewer(item){
+  if(!item || !item.file) return;
+  selectedItem = item;
+
+  const overlay = document.getElementById('viewerOverlay');
+  const title = document.getElementById('viewerTitle');
+  const area = document.getElementById('editorArea');
+
+  if(title) title.textContent = item.name;
+  if(area) area.value = 'Loading…';
+
+  item.file.text().then(text=>{
+    if(area) area.value = text;
+    editorDirty = false;
+  }).catch(()=>{
+    if(area) area.value = '[Unable to read file contents]';
+    editorDirty = false;
+  });
+
+  if(overlay){
+    overlay.style.display='flex';
+    overlay.setAttribute('aria-hidden','false');
+  }
+}
+
+function saveEditor(){
+  if(!selectedItem || selectedItem.type!=='file') return;
+  const lname = String(selectedItem.name||'').toLowerCase();
+  const isText = lname.endsWith('.txt') || lname.endsWith('.py') || lname.endsWith('.md') || lname.endsWith('.log');
+  if(!isText){
+    alert('This file type is not editable in the browser editor.');
+    return;
+  }
+
+  const area = document.getElementById('editorArea');
+  if(!area) return;
+
+  const content = area.value;
+  const mime = selectedItem.file?.type || 'text/plain';
+  selectedItem.file = new File([content], selectedItem.name, { type: mime });
+  editorDirty = false;
+  scheduleSave();
+  renderInspector();
+  updateFileGrid();
+}
+
+function closeViewer(){
+  if(editorDirty){
+    const ok = confirm('You have unsaved changes. Close without saving?');
+    if(!ok) return;
+  }
+  editorDirty = false;
+  const overlay = document.getElementById('viewerOverlay');
+  if(overlay){
+    overlay.style.display='none';
+    overlay.setAttribute('aria-hidden','true');
+  }
+}
+
+document.addEventListener('keydown', (e)=>{
+  const overlay = document.getElementById('viewerOverlay');
+  const open = overlay && overlay.style.display === 'flex';
+  if(open && e.key === 'Escape'){
+    e.preventDefault();
+    closeViewer();
+  }
+});
+
+window.addEventListener('beforeunload', (e)=>{
+  if(editorDirty){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ---------------------------
+   Messages (WebSocket)
+   --------------------------- */
+let chatWS = null;
+let chatConnected = false;
+let chatName = localStorage.getItem('chat_name') || '';
+let chatHost = localStorage.getItem('chat_host') || '';
+let chatPort = localStorage.getItem('chat_port') || '45831';
+let chatToken = localStorage.getItem('chat_token') || '';
+let chatLog = [];
+let fhutcFiles = []; // Separate permanent storage for FHUTC
+
+// Load FHUTC files from localStorage (permanent storage)
+try{
+  fhutcFiles = JSON.parse(localStorage.getItem('fhutc_files')) || [];
+}catch{
+  fhutcFiles = [];
+}
+
+function saveFHUTCFile(fileMsg){
+  // Validate that we have all required fields
+  if(!fileMsg || !fileMsg.name) return;
+  
+  // Create a complete file record
+  const fileRecord = {
+    type: 'file',
+    from: fileMsg.from || 'Unknown',
+    name: fileMsg.name,
+    stored: fileMsg.stored || fileMsg.name,
+    size: fileMsg.size || 0,
+    mime: fileMsg.mime || 'application/octet-stream',
+    time: fileMsg.time || Date.now()
+  };
+  
+  // Add to permanent FHUTC storage if not already there
+  const exists = fhutcFiles.some(f => f.time === fileRecord.time && f.name === fileRecord.name);
+  if(!exists){
+    fhutcFiles.push(fileRecord);
+    localStorage.setItem('fhutc_files', JSON.stringify(fhutcFiles));
+  }
+}
+
+function guessDefaultHost(){
+  return (location.hostname && location.hostname.trim()) ? location.hostname : 'localhost';
+}
+
+function setChatName(){
+  const n = prompt('Your chat name', chatName || '');
+  if(!n) return;
+  chatName = n.trim();
+  if(!chatName) return;
+  localStorage.setItem('chat_name', chatName);
+  renderMessagesView();
+}
+
+function setChatServerSettings(){
+  const defHost = chatHost || guessDefaultHost();
+  const h = prompt('Server host/IP (example: 192.168.0.10 or localhost)', defHost);
+  if(!h) return;
+  chatHost = h.trim();
+  localStorage.setItem('chat_host', chatHost);
+
+  const p = prompt('Server port', chatPort || '45831');
+  if(!p) return;
+  chatPort = String(p).trim();
+  localStorage.setItem('chat_port', chatPort);
+
+  const t = prompt('Server token (must match SECRET_TOKEN in sd.py)', chatToken || '');
+  if(t === null) return;
+  chatToken = String(t).trim();
+  localStorage.setItem('chat_token', chatToken);
+
+  disconnectChat();
+  connectChat();
+}
+
+function chatUrl(){
+  const host = (chatHost && chatHost.trim()) ? chatHost.trim() : guessDefaultHost();
+  const port = (chatPort && String(chatPort).trim()) ? String(chatPort).trim() : '45831';
+  const name = encodeURIComponent(chatName || '');
+  const token = encodeURIComponent(chatToken || '');
+  return `ws://${host}:${port}/ws/${name}/${token}`;
+}
+
+function connectChat(){
+  if(!chatName){
+    setChatName();
+    if(!chatName) return;
+  }
+  if(!chatToken){
+    alert('Set your server token first (Messages → Server settings).');
+    return;
+  }
+
+  if(chatWS && (chatWS.readyState === WebSocket.OPEN || chatWS.readyState === WebSocket.CONNECTING)) return;
+
+  try{
+    chatWS = new WebSocket(chatUrl());
+  } catch{
+    chatConnected = false;
+    renderMessagesView();
+    alert('Failed to create WebSocket. Check host/port and try again.');
+    return;
+  }
+
+  chatWS.onopen = () => {
+    chatConnected = true;
+    renderMessagesView(true);
+  };
+
+  chatWS.onmessage = (e) => {
+    let msg = null;
+    try{ msg = JSON.parse(e.data); }catch{ return; }
+    
+    // Handle history sync from server
+    if(msg.type === 'history'){
+      const serverMessages = msg.messages || [];
+      
+      // Merge server history with local cache, avoiding duplicates
+      const existingTimes = new Set(chatLog.map(m => m.time));
+      
+      for(const serverMsg of serverMessages){
+        if(!existingTimes.has(serverMsg.time)){
+          chatLog.push(serverMsg);
+          
+          // If it's a file, also save to FHUTC
+          if(serverMsg.type === 'file'){
+            saveFHUTCFile(serverMsg);
+          }
+        }
+      }
+      
+      // Sort by timestamp
+      chatLog.sort((a, b) => (a.time || 0) - (b.time || 0));
+      
+      localStorage.setItem('chat_cache', JSON.stringify(chatLog));
+      renderMessagesView(true);
+      return;
+    }
+    
+    // Ignore regular messages from yourself (already added locally when sending)
+    if(msg.from === chatName) return;
+    
+    // Save files to FHUTC permanent storage
+    if(msg.type === 'file'){
+      saveFHUTCFile(msg);
+    }
+    
+    chatLog.push(msg);
+    localStorage.setItem('chat_cache', JSON.stringify(chatLog));
+    renderMessagesView(true);
+  };
+
+  chatWS.onclose = () => {
+    chatConnected = false;
+    renderMessagesView();
+    if(chatName && chatToken){
+      setTimeout(()=>{
+        if(view === 'messages') connectChat();
+      }, 2000);
+    }
+  };
+}
+
+function disconnectChat(){
+  try{ chatWS && chatWS.close(); }catch{}
+  chatWS = null;
+  chatConnected = false;
+  renderMessagesView();
+}
+
+function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  if(!chatConnected || !chatWS || chatWS.readyState !== WebSocket.OPEN){
+    alert('Not connected. Click Connect.');
+    return;
+  }
+
+  if(input && input.value.trim()){
+    const msg = {
+      type: 'message',
+      from: chatName,
+      to: 'global',
+      text: input.value.trim(),
+      time: Date.now()
+    };
+    chatLog.push(msg);
+    localStorage.setItem('chat_cache', JSON.stringify(chatLog));
+    renderMessagesView(true);
+    chatWS.send(JSON.stringify(msg));
+    input.value = '';
+  }
+}
+
+function pickChatFile(){
+  const i = document.getElementById('chatFileInput');
+  if(!i) return;
+  i.onchange = async () => {
+    const files = [...i.files];
+    i.value = '';
+    for(const f of files){
+      await sendChatFile(f);
+    }
+  };
+  i.click();
+}
+
+async function sendChatFile(file){
+  if(!file) return;
+  console.log('Sending file:', file.name, file.type, file.size);
+  
+  if(file.size > 20 * 1024 * 1024){
+    alert('File too large (max 20 MB per file).');
+    return;
+  }
+  
+  if(!chatConnected || !chatWS || chatWS.readyState !== WebSocket.OPEN){
+    alert('Not connected to chat server!');
+    return;
+  }
+  
+  const buf = await file.arrayBuffer();
+  const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const ts = Date.now();
+  const msg = {
+    type: 'file',
+    from: chatName,
+    to: 'global',
+    name: file.name,
+    mime: file.type || 'application/octet-stream',
+    size: file.size,
+    data: b64,
+    time: ts,
+    stored: `${ts}_${file.name}`  // Add stored field for download link
+  };
+  
+  console.log('File message prepared:', {
+    type: msg.type,
+    from: msg.from,
+    name: msg.name,
+    size: msg.size,
+    mime: msg.mime,
+    dataLength: b64.length
+  });
+  
+  // Save to FHUTC permanent storage
+  saveFHUTCFile(msg);
+  
+  chatLog.push(msg);
+  localStorage.setItem('chat_cache', JSON.stringify(chatLog));
+  renderMessagesView(true);
+  
+  console.log('Sending to server via WebSocket...');
+  chatWS.send(JSON.stringify(msg));
+  console.log('File sent to server!');
+}
+
+function renderMessagesView(scroll=false){
+  const box = document.getElementById('chatMessages');
+  const status = document.getElementById('chatStatus');
+  const meta = document.getElementById('chatMeta');
+
+  if(status){
+    status.textContent = chatConnected ? '● Connected' : '● Disconnected';
+    status.style.color = chatConnected ? '#35ffd2' : '#ff5c7a';
+  }
+
+  if(meta){
+    const host = (chatHost && chatHost.trim()) ? chatHost.trim() : guessDefaultHost();
+    meta.textContent = `Name: ${chatName || '—'} • Server: ${host}:${chatPort || '45831'}`;
+  }
+
+  if(!box) return;
+
+  box.innerHTML = (chatLog || []).map(m=>{
+    const from = escapeHtml(m.from || '?');
+    const t = new Date(m.time || Date.now()).toLocaleTimeString();
+
+    // 📎 FILE MESSAGE
+    if(m.type === 'file'){
+      const url = `http://${chatHost}:${chatPort}/download/${encodeURIComponent(m.stored)}`;
+      return `
+        <div style="margin-bottom:12px;">
+          <b>${from}</b>
+          <small style="color:var(--muted)"> ${t}</small><br>
+          📎 <b>${escapeHtml(m.name)}</b>
+          <small style="color:var(--muted)"> (${humanBytes(m.size)})</small><br>
+          <a class="btn btn-soft" href="${url}" download>⬇ Download</a>
+        </div>
+      `;
+    }
+
+    // 💬 TEXT MESSAGE
+    const text = escapeHtml(m.text || '');
+    return `
+      <div style="margin-bottom:10px;">
+        <b>${from}</b>
+        <small style="color:var(--muted)"> ${t}</small><br>
+        ${text}
+      </div>
+    `;
+  }).join('');
+
+  if(scroll) box.scrollTop = box.scrollHeight;
+}
+
+
+function renderMessages(c){
+  try{ chatLog = JSON.parse(localStorage.getItem('chat_cache')) || []; }catch{ chatLog = []; }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'card';
+  wrap.style.gridColumn = '1 / -1';
+
+  wrap.innerHTML = `
+    <h2>💬 Messages</h2>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
+      <button class="btn btn-primary" onclick="setChatName()">👤 Set name</button>
+      <button class="btn btn-soft" onclick="setChatServerSettings()">🛠️ Server settings</button>
+      <button class="btn btn-accent" onclick="connectChat()">Connect</button>
+      <button class="btn btn-danger" onclick="disconnectChat()">Disconnect</button>
+      <button class="btn btn-danger" onclick="clearChatHistory()">🗑️ Clear History</button>
+      <span id="chatStatus" style="font-weight:800">● Disconnected</span>
+    </div>
+
+    <div id="chatMeta" style="color:var(--muted); font-size:12px; margin-bottom:10px;"></div>
+
+    <div id="chatMessages" style="height:320px; overflow:auto; background:#0e1130; border-radius:12px; padding:12px; margin-bottom:10px;"></div>
+
+    <div style="display:flex; gap:8px;">
+      <input id="chatInput" placeholder="Type message…" style="flex:1; padding:10px; border-radius:10px; border:none; outline:none; background:#0e1130; color:var(--text);" onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <input type="file" id="chatFileInput" style="display:none" multiple>
+      <button class="btn btn-soft" onclick="pickChatFile()">📎 Upload</button>
+      <button class="btn btn-accent" onclick="sendChatMessage()">Send</button>
+    </div>
+
+    <div style="margin-top:10px; color:var(--muted); font-size:12px;">
+      Tip: Set name → Server settings → Connect.
+    </div>
+  `;
+
+  c.appendChild(wrap);
+
+  if(chatName && chatToken) connectChat();
+  renderMessagesView(true);
+}
+
+function deleteChatFile(index){
+  if(!confirm('Delete this file from FHUTC?\n\nThis will permanently remove it from your file list.')){
+    return;
+  }
+  fhutcFiles.splice(index, 1);
+  localStorage.setItem('fhutc_files', JSON.stringify(fhutcFiles));
+  render();
+}
+
+function clearChatHistory(){
+  if(!confirm('Clear ALL chat history?\n\nThis will delete all messages from your chat.\nFiles will still be visible in FHUTC tab.')){
+    return;
+  }
+  
+  chatLog = [];
+  localStorage.removeItem('chat_cache');
+  renderMessagesView(true);
+  alert('Chat history cleared! 🗑️\n\nNote: Files are still available in FHUTC tab.\nIf you reconnect, the server will send you the last 100 messages again.');
+}
+
+function renderFHUTC(c){
+  const wrap = document.createElement('div');
+  wrap.className = 'card';
+  wrap.style.gridColumn = '1 / -1';
+  
+  wrap.innerHTML = `
+    <h2>📎 Files Have Been Uploaded To Chat</h2>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div style="color:var(--muted); font-size:13px;">
+        All files uploaded since ever: ${fhutcFiles.length} file(s)
+      </div>
+      <button class="btn btn-soft" onclick="debugFHUTC()" style="font-size:12px; padding:6px 10px;">🔍 Debug Storage</button>
+    </div>
+    
+    <div style="margin-bottom:16px;">
+      <input 
+        id="fhutcSearch" 
+        type="text" 
+        placeholder="Search files by name, uploader, or date..." 
+        style="width:100%; padding:10px 12px; border-radius:10px; border:none; outline:none; background:#0e1130; color:var(--text); font-size:14px;"
+        oninput="filterFHUTC()"
+      >
+    </div>
+    
+    <div id="fhutcList" style="max-height:500px; overflow:auto;">
+      ${fhutcFiles.length === 0 ? 
+        '<div style="color:var(--muted); padding:40px; text-align:center;">No files have been uploaded yet</div>' :
+        fhutcFiles.map((m, idx) => {
+          const from = escapeHtml(m.from || '?');
+          const t = new Date(m.time || Date.now()).toLocaleString();
+          const url = m.stored ? `http://${chatHost}:${chatPort}/download/${encodeURIComponent(m.stored)}` : '#';
+          
+          return `
+            <div class="fhutc-file-item" data-filename="${escapeHtml(m.name.toLowerCase())}" data-uploader="${escapeHtml(from.toLowerCase())}" data-date="${t.toLowerCase()}" style="background:#0e1130; border-radius:12px; padding:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="flex:1;">
+                <div style="font-weight:700;">📎 ${escapeHtml(m.name)}</div>
+                <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+                  Uploaded by: <b>${from}</b> • ${t} • ${humanBytes(m.size)}
+                </div>
+              </div>
+              <div style="display:flex; gap:8px;">
+                ${m.stored ? `<a class="btn btn-soft" href="${url}" download style="text-decoration:none;">⬇ Download</a>` : ''}
+                <button class="btn btn-danger" onclick="deleteChatFile(${idx})">🗑 Delete</button>
+              </div>
+            </div>
+          `;
+        }).join('')
+      }
+    </div>
+    
+    <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,.05); border-radius:10px;">
+      <div style="font-size:13px; color:var(--muted);">
+        <b>Note:</b> FHUTC stores files permanently. These files persist even if you clear chat history.
+      </div>
+    </div>
+  `;
+  
+  c.appendChild(wrap);
+}
+
+function filterFHUTC(){
+  const searchInput = document.getElementById('fhutcSearch');
+  if(!searchInput) return;
+  
+  const query = searchInput.value.toLowerCase().trim();
+  const fileItems = document.querySelectorAll('.fhutc-file-item');
+  
+  let visibleCount = 0;
+  
+  fileItems.forEach(item => {
+    const filename = item.getAttribute('data-filename') || '';
+    const uploader = item.getAttribute('data-uploader') || '';
+    const date = item.getAttribute('data-date') || '';
+    
+    // Check if query matches filename, uploader, or date
+    const matches = filename.includes(query) || uploader.includes(query) || date.includes(query);
+    
+    if(matches || query === ''){
+      item.style.display = 'flex';
+      visibleCount++;
+    } else {
+      item.style.display = 'none';
+    }
+  });
+  
+  // Show "no results" message if needed
+  const listContainer = document.getElementById('fhutcList');
+  if(listContainer && visibleCount === 0 && query !== '' && fhutcFiles.length > 0){
+    const existingMsg = listContainer.querySelector('.no-results-msg');
+    if(!existingMsg){
+      const noResults = document.createElement('div');
+      noResults.className = 'no-results-msg';
+      noResults.style.cssText = 'color:var(--muted); padding:40px; text-align:center;';
+      noResults.textContent = `No files found for "${query}"`;
+      listContainer.appendChild(noResults);
+    }
+  } else {
+    const existingMsg = listContainer?.querySelector('.no-results-msg');
+    if(existingMsg) existingMsg.remove();
+  }
+}
+
+function debugFHUTC(){
+  console.log('=== FHUTC Debug Info ===');
+  console.log('Total files:', fhutcFiles.length);
+  console.log('Raw storage:', localStorage.getItem('fhutc_files'));
+  console.log('Parsed files:', fhutcFiles);
+  
+  if(fhutcFiles.length > 0){
+    console.log('\nFirst file structure:');
+    console.log(fhutcFiles[0]);
+    
+    let report = `FHUTC Storage Report\n${'='.repeat(50)}\n\n`;
+    report += `Total Files: ${fhutcFiles.length}\n\n`;
+    
+    fhutcFiles.forEach((f, i) => {
+      report += `File ${i + 1}:\n`;
+      report += `  Name: ${f.name || 'MISSING'}\n`;
+      report += `  From: ${f.from || 'MISSING'}\n`;
+      report += `  Time: ${f.time ? new Date(f.time).toLocaleString() : 'MISSING'}\n`;
+      report += `  Size: ${f.size || 'MISSING'}\n`;
+      report += `  Stored: ${f.stored || 'MISSING'}\n\n`;
+    });
+    
+    alert(report);
+  } else {
+    alert('No files in FHUTC storage yet!');
+  }
+}
+
+/* ---------------------------
+   VAULT (Password Protected Files)
+   --------------------------- */
+function renderVault(c){
+  // Check if password is set
+  if(!vaultPassword){
+    const card = document.createElement('div');
+    card.className='card';
+    card.style.gridColumn='1 / -1';
+    card.innerHTML=`
+      <h2>🔐 Vault - Set Password</h2>
+      <p style="color:var(--muted); margin-bottom:20px;">Create a password to protect your private files.</p>
+      <input type="password" id="newVaultPass" placeholder="Enter password" style="padding:10px; border-radius:8px; border:none; background:#0e1130; color:var(--text); width:300px; margin-right:10px;">
+      <button class="btn btn-primary" onclick="setVaultPassword()">Set Password</button>
+    `;
+    c.appendChild(card);
+    return;
+  }
+  
+  // Check if unlocked
+  if(!vaultUnlocked){
+    const card = document.createElement('div');
+    card.className='card';
+    card.style.gridColumn='1 / -1';
+    card.innerHTML=`
+      <h2>🔐 Vault - Enter Password</h2>
+      <p style="color:var(--muted); margin-bottom:20px;">Enter your password to access the vault.</p>
+      <input type="password" id="vaultPassInput" placeholder="Password" style="padding:10px; border-radius:8px; border:none; background:#0e1130; color:var(--text); width:300px; margin-right:10px;" onkeypress="if(event.key==='Enter')unlockVault()">
+      <button class="btn btn-primary" onclick="unlockVault()">Unlock</button>
+    `;
+    c.appendChild(card);
+    return;
+  }
+  
+  // Render vault like files
+  renderVaultFiles(c);
+}
+
+function setVaultPassword(){
+  const input = document.getElementById('newVaultPass');
+  const pass = input?.value;
+  if(!pass || pass.length < 3){
+    alert('Password must be at least 3 characters!');
+    return;
+  }
+  vaultPassword = pass;
+  localStorage.setItem('vault_password', pass);
+  vaultUnlocked = true;
+  render();
+}
+
+function unlockVault(){
+  const input = document.getElementById('vaultPassInput');
+  const pass = input?.value;
+  if(pass === vaultPassword){
+    vaultUnlocked = true;
+    render();
+  } else {
+    alert('❌ Wrong password!');
+    if(input) input.value = '';
+  }
+}
+
+function resetVaultPassword(){
+  const currentPass = prompt('Enter your CURRENT vault password to change it:');
+  if(!currentPass) return;
+  
+  if(currentPass !== vaultPassword){
+    alert('❌ Wrong password! Cannot change password.');
+    return;
+  }
+  
+  const newPass = prompt('Enter NEW vault password (min 3 characters):');
+  if(!newPass || newPass.length < 3){
+    alert('❌ Password must be at least 3 characters!');
+    return;
+  }
+  
+  const confirm = prompt('Confirm NEW password:');
+  if(confirm !== newPass){
+    alert('❌ Passwords do not match!');
+    return;
+  }
+  
+  // Change password without deleting files!
+  vaultPassword = newPass;
+  localStorage.setItem('vault_password', newPass);
+  
+  alert('✅ Vault password changed successfully!\n\nYour files are safe!');
+  render();
+}
+
+function renderVaultFiles(c){
+  // Similar to renderFiles but for vault
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  
+  const crumbsArr = ['Vault', ...vaultFolderStack.map(f=>f.name)];
+  const crumbs = crumbsArr.map((name,i)=>`<span class="crumb vault-crumb" data-index="${i}">${escapeHtml(name)}</span>`).join('  ›  ');
+  
+  card.innerHTML=`
+    <h2>🔐 Vault (Protected)</h2>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin:10px 0;">
+      <div style="color:var(--muted); font-size:12px;">${crumbs}</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-soft" onclick="lockVault()">🔒 Lock</button>
+        <button class="btn btn-danger" onclick="resetVaultPassword()">🔑 Change Password</button>
+        <button class="btn btn-soft" onclick="vaultGoHome()">🏠 Home</button>
+        <button class="btn btn-soft" onclick="vaultGoBack()">⬅ Up</button>
+        <button class="btn btn-primary" onclick="vaultNewFolder()">+ Folder</button>
+        <button class="btn btn-accent" onclick="vaultUploadFile()">Upload</button>
+      </div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 320px; gap:14px; align-items:start;">
+      <div style="position:relative;">
+        <div class="file-grid" id="vaultGrid"></div>
+        <!-- Vault Multi-select Toolbar -->
+        <div id="vaultMultiSelectToolbar" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg, var(--card), var(--panel)); padding:14px 20px; border-radius:14px; display:none; align-items:center; gap:10px; box-shadow:0 10px 50px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.1); border:1px solid rgba(108,140,255,.3); z-index:9999; backdrop-filter:blur(10px);">
+          <span class="count" id="vaultSelectedCount" style="font-weight:700; color:var(--accent2); margin-right:6px; font-size:15px;">0 selected</span>
+          <button class="btn btn-soft" onclick="selectAllInVault()" style="padding:8px 12px; font-size:13px;">☑️ All</button>
+          <button class="btn btn-accent" onclick="moveVaultSelectedToFolder()" style="padding:8px 12px; font-size:13px;">📁 Move</button>
+          <button class="btn btn-danger" onclick="deleteVaultSelectedItems()" style="padding:8px 12px; font-size:13px;">🗑️ Delete</button>
+          <button class="btn btn-soft" onclick="clearVaultSelection()" style="padding:8px 12px; font-size:13px;">✕</button>
+        </div>
+      </div>
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800; letter-spacing:.2px;">Inspector</div>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">Click a file to see actions.</div>
+        <div id="vaultInspector" style="margin-top:12px;"></div>
+      </div>
+    </div>
+    
+    <input type="file" id="vaultFileInput" hidden multiple />
+  `;
+  
+  c.appendChild(card);
+  updateVaultGrid();
+  renderVaultInspector();
+}
+
+function lockVault(){
+  vaultUnlocked = false;
+  render();
+}
+
+function renderVaultInspector(){
+  const box = document.getElementById('vaultInspector');
+  if(!box) return;
+
+  if(!selectedVaultItem){
+    box.innerHTML = `
+      <div style="padding:10px; border-radius:12px; background:rgba(255,255,255,.04); color:var(--muted); font-size:12px;">
+        No selection. Click a file or folder to see actions.
+      </div>
+    `;
+    return;
+  }
+
+  const it = selectedVaultItem;
+  box.innerHTML=`
+    <div style="font-weight:800; margin-bottom:8px;">${escapeHtml(it.name)}</div>
+    <div style="color:var(--muted); font-size:12px; margin-bottom:14px;">Type: ${it.type}</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      ${it.type === 'file' ? '<button class="btn btn-accent" style="width:100%;" onclick="previewVaultItem()">👁️ Preview</button>' : ''}
+      <button class="btn btn-soft" style="width:100%;" onclick="renameVaultItem()">✏️ Rename</button>
+      ${it.type === 'file' ? '<button class="btn btn-primary" style="width:100%;" onclick="downloadVaultItem()">⬇️ Download</button>' : ''}
+      <button class="btn btn-danger" style="width:100%;" onclick="deleteVaultItem()">🗑️ Delete</button>
+    </div>
+  `;
+}
+
+function renameVaultItem(){
+  if(!selectedVaultItem) return;
+  const n = prompt('New name', selectedVaultItem.name);
+  if(!n) return;
+  const name = n.trim();
+  if(!name) return;
+  
+  selectedVaultItem.name = name;
+  if(selectedVaultItem.type==='file' && selectedVaultItem.file){
+    try{
+      const old = selectedVaultItem.file;
+      selectedVaultItem.file = new File([old], name, { type: old.type || 'application/octet-stream' });
+    } catch{}
+  }
+  
+  renderVaultInspector();
+  updateVaultGrid();
+  scheduleSave();
+}
+
+function deleteVaultItem(){
+  if(!selectedVaultItem) return;
+  const ok = confirm(`Move "${selectedVaultItem.name}" to trash?`);
+  if(!ok) return;
+  
+  // Move to trash instead of permanent delete
+  trashBin.push({
+    ...selectedVaultItem,
+    deletedFrom: 'vault_' + currentVaultFolder.id,
+    deletedAt: Date.now(),
+    fromVault: true
+  });
+  
+  currentVaultFolder.children = (currentVaultFolder.children||[]).filter(x=>x.id!==selectedVaultItem.id);
+  selectedVaultItem = null;
+  renderVaultInspector();
+  updateVaultGrid();
+  scheduleSave();
+}
+
+function downloadVaultItem(){
+  if(!selectedVaultItem || !selectedVaultItem.file) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(selectedVaultItem.file);
+  a.download = selectedVaultItem.name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ---------------------------
+   FILE PREVIEW SYSTEM
+   --------------------------- */
+let currentPreviewFile = null;
+let currentPreviewURL = null;
+
+function previewVaultItem(){
+  if(!selectedVaultItem || !selectedVaultItem.file) return;
+  openPreview(selectedVaultItem.file, selectedVaultItem.name);
+}
+
+function openPreview(file, fileName){
+  currentPreviewFile = file;
+  const modal = document.getElementById('previewModal');
+  const body = document.getElementById('previewBody');
+  const title = document.getElementById('previewFileName');
+  
+  title.textContent = fileName;
+  body.innerHTML = '';
+  
+  // Clean up previous URL if exists
+  if(currentPreviewURL){
+    URL.revokeObjectURL(currentPreviewURL);
+    currentPreviewURL = null;
+  }
+  
+  const ext = fileName.toLowerCase().split('.').pop();
+  const fileType = file.type || '';
+  
+  // Image preview
+  if(fileType.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)){
+    currentPreviewURL = URL.createObjectURL(file);
+    const img = document.createElement('img');
+    img.src = currentPreviewURL;
+    img.alt = fileName;
+    body.appendChild(img);
+  }
+  // PDF preview
+  else if(fileType === 'application/pdf' || ext === 'pdf'){
+    currentPreviewURL = URL.createObjectURL(file);
+    const iframe = document.createElement('iframe');
+    iframe.src = currentPreviewURL;
+    iframe.title = fileName;
+    body.appendChild(iframe);
+  }
+  // Text file preview
+  else if(fileType.startsWith('text/') || ['txt','md','json','js','py','html','css','xml','log','csv'].includes(ext)){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const pre = document.createElement('pre');
+      pre.textContent = e.target.result;
+      body.appendChild(pre);
+    };
+    reader.readAsText(file);
+  }
+  // Unsupported file type
+  else {
+    body.innerHTML = `
+      <div style="text-align:center; padding:40px;">
+        <div style="font-size:64px; margin-bottom:20px;">📄</div>
+        <h3 style="color:var(--text); margin-bottom:10px;">Preview not available</h3>
+        <p style="color:var(--muted);">This file type cannot be previewed.</p>
+        <p style="color:var(--muted); margin-top:10px;">File: <strong>${fileName}</strong></p>
+        <button class="preview-btn preview-download" onclick="downloadFromPreview()" style="margin-top:20px;">
+          ⬇️ Download File
+        </button>
+      </div>
+    `;
+  }
+  
+  modal.classList.add('active');
+}
+
+function closePreview(){
+  const modal = document.getElementById('previewModal');
+  modal.classList.remove('active');
+  
+  // Clean up object URL
+  if(currentPreviewURL){
+    URL.revokeObjectURL(currentPreviewURL);
+    currentPreviewURL = null;
+  }
+  
+  currentPreviewFile = null;
+  document.getElementById('previewBody').innerHTML = '';
+}
+
+function downloadFromPreview(){
+  if(!currentPreviewFile) return;
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(currentPreviewFile);
+  a.href = url;
+  a.download = document.getElementById('previewFileName').textContent;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Close preview when clicking outside
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('previewModal');
+  if(modal){
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) closePreview();
+    });
+  }
+});
+
+/* ---------------------------
+   MULTI-SELECT SYSTEM
+   --------------------------- */
+function toggleItemSelection(itemId){
+  if(selectedItems.has(itemId)){
+    selectedItems.delete(itemId);
+  } else {
+    selectedItems.add(itemId);
+  }
+  updateMultiSelectToolbar();
+  updateFileGrid();
+}
+
+function updateMultiSelectToolbar(){
+  const toolbar = document.getElementById('multiSelectToolbar');
+  const count = document.getElementById('selectedCount');
+  
+  if(selectedItems.size > 0){
+    toolbar.classList.add('active');
+    count.textContent = `${selectedItems.size} selected`;
+  } else {
+    toolbar.classList.remove('active');
+  }
+}
+
+function clearSelection(){
+  selectedItems.clear();
+  updateMultiSelectToolbar();
+  updateFileGrid();
+}
+
+function getSelectedItemObjects(){
+  const items = [];
+  selectedItems.forEach(id => {
+    const item = findItemById(currentFolder, id);
+    if(item) items.push(item);
+  });
+  return items;
+}
+
+function findItemById(folder, id){
+  if(!folder || !folder.children) return null;
+  
+  for(const item of folder.children){
+    if(item.id === id) return item;
+    if(item.type === 'folder'){
+      const found = findItemById(item, id);
+      if(found) return found;
+    }
+  }
+  return null;
+}
+
+function moveSelectedToFolder(){
+  if(selectedItems.size === 0){
+    alert('No items selected!');
+    return;
+  }
+  
+  // Get ALL folders in the entire filesystem
+  const allFolders = [];
+  
+  function collectAllFolders(folder, path = [], depth = 0){
+    if(!folder || !folder.children) return;
+    
+    folder.children.forEach(item => {
+      if(item.type === 'folder'){
+        const fullPath = [...path, item.name].join(' / ');
+        const indent = '  '.repeat(depth);
+        allFolders.push({
+          folder: item,
+          displayName: `${indent}${item.name}`,
+          fullPath: fullPath || 'Home',
+          depth: depth
+        });
+        // Recursively collect subfolders
+        collectAllFolders(item, [...path, item.name], depth + 1);
+      }
+    });
+  }
+  
+  // Start from root
+  collectAllFolders(fsRoot, [], 0);
+  
+  // Check if we can move up (not in root)
+  const canMoveUp = folderStack.length > 0;
+  
+  // Create folder selection prompt
+  let folderList = 'Move to folder:\n\n';
+  
+  // Add "Move Up" option if not in root
+  if(canMoveUp){
+    const parentName = folderStack.length > 1 
+      ? folderStack[folderStack.length - 1].name 
+      : 'Home';
+    folderList += `⬆️  UP - Move to parent (${parentName})\n`;
+  }
+  
+  // Add Home/Root option
+  if(currentFolder.id !== fsRoot.id){
+    folderList += `🏠 HOME - Move to root\n`;
+  }
+  
+  folderList += '\n';
+  
+  if(allFolders.length > 0){
+    folderList += '📁 ALL FOLDERS:\n';
+    allFolders.forEach((item, idx) => {
+      folderList += `${idx + 1}. ${item.displayName}\n`;
+    });
+    folderList += '\n';
+  }
+  
+  folderList += '0. Create NEW folder (in current location)\n';
+  folderList += `\nEnter ${canMoveUp ? '"UP", "HOME", ' : ''}number, or 0:`;
+  
+  const choice = prompt(folderList);
+  if(!choice) return;
+  
+  const trimmedChoice = choice.trim().toUpperCase();
+  
+  // Check if moving up
+  if(trimmedChoice === 'UP'){
+    if(!canMoveUp){
+      alert('Already at root!');
+      return;
+    }
+    
+    const parentFolder = folderStack.length > 1 
+      ? folderStack[folderStack.length - 1]
+      : fsRoot;
+    
+    const items = getSelectedItemObjects();
+    let movedCount = 0;
+    
+    items.forEach(item => {
+      currentFolder.children = currentFolder.children.filter(it => it.id !== item.id);
+      parentFolder.children = parentFolder.children || [];
+      parentFolder.children.push(item);
+      movedCount++;
+    });
+    
+    clearSelection();
+    alert(`✓ Moved ${movedCount} item(s) up to parent folder`);
+    updateFileGrid();
+    scheduleSave();
+    return;
+  }
+  
+  // Check if moving to home
+  if(trimmedChoice === 'HOME'){
+    const items = getSelectedItemObjects();
+    let movedCount = 0;
+    
+    items.forEach(item => {
+      currentFolder.children = currentFolder.children.filter(it => it.id !== item.id);
+      fsRoot.children = fsRoot.children || [];
+      fsRoot.children.push(item);
+      movedCount++;
+    });
+    
+    clearSelection();
+    alert(`✓ Moved ${movedCount} item(s) to Home`);
+    updateFileGrid();
+    scheduleSave();
+    return;
+  }
+  
+  let targetFolder;
+  
+  // Check if creating new folder
+  if(choice.trim() === '0'){
+    const newFolderName = prompt('New folder name:');
+    if(!newFolderName || !newFolderName.trim()) return;
+    
+    targetFolder = {
+      id: uid(),
+      name: newFolderName.trim(),
+      type: 'folder',
+      children: []
+    };
+    
+    currentFolder.children = currentFolder.children || [];
+    currentFolder.children.push(targetFolder);
+  } else {
+    const folderIndex = parseInt(choice) - 1;
+    if(isNaN(folderIndex) || folderIndex < 0 || folderIndex >= allFolders.length){
+      alert('Invalid folder number!');
+      return;
+    }
+    targetFolder = allFolders[folderIndex].folder;
+  }
+  
+  targetFolder.children = targetFolder.children || [];
+  
+  const items = getSelectedItemObjects();
+  let movedCount = 0;
+  
+  items.forEach(item => {
+    if(item.id === targetFolder.id) return;
+    
+    currentFolder.children = currentFolder.children.filter(it => it.id !== item.id);
+    targetFolder.children.push(item);
+    movedCount++;
+  });
+  
+  clearSelection();
+  
+  const destName = allFolders.find(f => f.folder.id === targetFolder.id)?.fullPath || targetFolder.name;
+  alert(`✓ Moved ${movedCount} item(s) to "${destName}"`);
+  
+  updateFileGrid();
+  scheduleSave();
+}
+
+function selectAllInFolder(){
+  selectedItems.clear();
+  const items = currentFolder.children || [];
+  items.forEach(item => {
+    selectedItems.add(item.id);
+  });
+  updateMultiSelectToolbar();
+  updateFileGrid();
+}
+
+function deleteSelectedItems(){
+  if(selectedItems.size === 0){
+    alert('No items selected!');
+    return;
+  }
+  
+  const ok = confirm(`Move ${selectedItems.size} item(s) to trash?`);
+  if(!ok) return;
+  
+  saveState(`Delete ${selectedItems.size} items`);
+  
+  const items = getSelectedItemObjects();
+  
+  items.forEach(item => {
+    // Move to trash
+    trashBin.push({
+      ...item,
+      deletedFrom: currentFolder.id,
+      deletedAt: Date.now()
+    });
+    
+    // Remove from current folder
+    currentFolder.children = currentFolder.children.filter(it => it.id !== item.id);
+  });
+  
+  clearSelection();
+  
+  updateFileGrid();
+  renderInspector();
+  scheduleSave();
+}
+
+/* ---------------------------
+   VAULT MULTI-SELECT SYSTEM
+   --------------------------- */
+function toggleVaultItemSelection(itemId){
+  if(selectedVaultItems.has(itemId)){
+    selectedVaultItems.delete(itemId);
+  } else {
+    selectedVaultItems.add(itemId);
+  }
+  updateVaultMultiSelectToolbar();
+  updateVaultGrid();
+}
+
+function updateVaultMultiSelectToolbar(){
+  const toolbar = document.getElementById('vaultMultiSelectToolbar');
+  const count = document.getElementById('vaultSelectedCount');
+  
+  if(!toolbar || !count) return;
+  
+  if(selectedVaultItems.size > 0){
+    toolbar.style.display = 'flex';
+    count.textContent = `${selectedVaultItems.size} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function clearVaultSelection(){
+  selectedVaultItems.clear();
+  updateVaultMultiSelectToolbar();
+  updateVaultGrid();
+}
+
+function getSelectedVaultItemObjects(){
+  const items = [];
+  selectedVaultItems.forEach(id => {
+    const item = findVaultItemById(currentVaultFolder, id);
+    if(item) items.push(item);
+  });
+  return items;
+}
+
+function findVaultItemById(folder, id){
+  if(!folder || !folder.children) return null;
+  
+  for(const item of folder.children){
+    if(item.id === id) return item;
+    if(item.type === 'folder'){
+      const found = findVaultItemById(item, id);
+      if(found) return found;
+    }
+  }
+  return null;
+}
+
+function moveVaultSelectedToFolder(){
+  if(selectedVaultItems.size === 0){
+    alert('No items selected!');
+    return;
+  }
+  
+  // Get ALL folders in the entire vault
+  const allFolders = [];
+  
+  function collectAllVaultFolders(folder, path = [], depth = 0){
+    if(!folder || !folder.children) return;
+    
+    folder.children.forEach(item => {
+      if(item.type === 'folder'){
+        const fullPath = [...path, item.name].join(' / ');
+        const indent = '  '.repeat(depth);
+        allFolders.push({
+          folder: item,
+          displayName: `${indent}${item.name}`,
+          fullPath: fullPath || 'Vault Home',
+          depth: depth
+        });
+        collectAllVaultFolders(item, [...path, item.name], depth + 1);
+      }
+    });
+  }
+  
+  collectAllVaultFolders(vaultRoot, [], 0);
+  
+  const canMoveUp = vaultFolderStack.length > 0;
+  
+  let folderList = 'Move to folder:\n\n';
+  
+  if(canMoveUp){
+    const parentName = vaultFolderStack.length > 1 
+      ? vaultFolderStack[vaultFolderStack.length - 1].name 
+      : 'Vault Home';
+    folderList += `⬆️  UP - Move to parent (${parentName})\n`;
+  }
+  
+  if(currentVaultFolder.id !== vaultRoot.id){
+    folderList += `🏠 HOME - Move to vault root\n`;
+  }
+  
+  folderList += '\n';
+  
+  if(allFolders.length > 0){
+    folderList += '📁 ALL FOLDERS:\n';
+    allFolders.forEach((item, idx) => {
+      folderList += `${idx + 1}. ${item.displayName}\n`;
+    });
+    folderList += '\n';
+  }
+  
+  folderList += '0. Create NEW folder (in current location)\n';
+  folderList += `\nEnter ${canMoveUp ? '"UP", "HOME", ' : ''}number, or 0:`;
+  
+  const choice = prompt(folderList);
+  if(!choice) return;
+  
+  const trimmedChoice = choice.trim().toUpperCase();
+  
+  if(trimmedChoice === 'UP'){
+    if(!canMoveUp){
+      alert('Already at vault root!');
+      return;
+    }
+    
+    const parentFolder = vaultFolderStack.length > 1 
+      ? vaultFolderStack[vaultFolderStack.length - 1]
+      : vaultRoot;
+    
+    const items = getSelectedVaultItemObjects();
+    let movedCount = 0;
+    
+    items.forEach(item => {
+      currentVaultFolder.children = currentVaultFolder.children.filter(it => it.id !== item.id);
+      parentFolder.children = parentFolder.children || [];
+      parentFolder.children.push(item);
+      movedCount++;
+    });
+    
+    clearVaultSelection();
+    alert(`✓ Moved ${movedCount} item(s) up to parent folder`);
+    updateVaultGrid();
+    scheduleSave();
+    return;
+  }
+  
+  if(trimmedChoice === 'HOME'){
+    const items = getSelectedVaultItemObjects();
+    let movedCount = 0;
+    
+    items.forEach(item => {
+      currentVaultFolder.children = currentVaultFolder.children.filter(it => it.id !== item.id);
+      vaultRoot.children = vaultRoot.children || [];
+      vaultRoot.children.push(item);
+      movedCount++;
+    });
+    
+    clearVaultSelection();
+    alert(`✓ Moved ${movedCount} item(s) to Vault Home`);
+    updateVaultGrid();
+    scheduleSave();
+    return;
+  }
+  
+  let targetFolder;
+  
+  if(choice.trim() === '0'){
+    const newFolderName = prompt('New folder name:');
+    if(!newFolderName || !newFolderName.trim()) return;
+    
+    targetFolder = {
+      id: uid(),
+      name: newFolderName.trim(),
+      type: 'folder',
+      children: []
+    };
+    
+    currentVaultFolder.children = currentVaultFolder.children || [];
+    currentVaultFolder.children.push(targetFolder);
+  } else {
+    const folderIndex = parseInt(choice) - 1;
+    if(isNaN(folderIndex) || folderIndex < 0 || folderIndex >= allFolders.length){
+      alert('Invalid folder number!');
+      return;
+    }
+    targetFolder = allFolders[folderIndex].folder;
+  }
+  
+  targetFolder.children = targetFolder.children || [];
+  
+  const items = getSelectedVaultItemObjects();
+  let movedCount = 0;
+  
+  items.forEach(item => {
+    if(item.id === targetFolder.id) return;
+    
+    currentVaultFolder.children = currentVaultFolder.children.filter(it => it.id !== item.id);
+    targetFolder.children.push(item);
+    movedCount++;
+  });
+  
+  clearVaultSelection();
+  
+  const destName = allFolders.find(f => f.folder.id === targetFolder.id)?.fullPath || targetFolder.name;
+  alert(`✓ Moved ${movedCount} item(s) to "${destName}"`);
+  
+  updateVaultGrid();
+  scheduleSave();
+}
+
+function selectAllInVault(){
+  selectedVaultItems.clear();
+  const items = currentVaultFolder.children || [];
+  items.forEach(item => {
+    selectedVaultItems.add(item.id);
+  });
+  updateVaultMultiSelectToolbar();
+  updateVaultGrid();
+}
+
+function deleteVaultSelectedItems(){
+  if(selectedVaultItems.size === 0){
+    alert('No items selected!');
+    return;
+  }
+  
+  const ok = confirm(`Delete ${selectedVaultItems.size} item(s) from vault?`);
+  if(!ok) return;
+  
+  const items = getSelectedVaultItemObjects();
+  
+  items.forEach(item => {
+    // Remove from current folder
+    currentVaultFolder.children = currentVaultFolder.children.filter(it => it.id !== item.id);
+  });
+  
+  clearVaultSelection();
+  
+  updateVaultGrid();
+  renderVaultInspector();
+  scheduleSave();
+}
+
+/* ---------------------------
+   TIMELINE VIEW
+   --------------------------- */
+function renderTimeline(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  
+  card.innerHTML=`
+    <h2>📅 Timeline</h2>
+    <p style="color:var(--muted); margin-bottom:20px;">Files organized by creation/modification date</p>
+  `;
+  
+  // Collect all files with timestamps
+  const allFiles = [];
+  function collectFiles(folder, path = []){
+    (folder.children || []).forEach(it => {
+      if(it.type === 'folder'){
+        collectFiles(it, path.concat([it.name]));
+      } else if(it.file){
+        allFiles.push({
+          item: it,
+          path: path,
+          timestamp: it.file.lastModified || Date.now()
+        });
+      }
+    });
+  }
+  collectFiles(fsRoot);
+  collectFiles(musicLibrary, ['Music']);
+  
+  // Sort by date (newest first)
+  allFiles.sort((a,b) => b.timestamp - a.timestamp);
+  
+  // Group by date
+  const grouped = {};
+  allFiles.forEach(f => {
+    const d = new Date(f.timestamp);
+    const key = d.toLocaleDateString();
+    if(!grouped[key]) grouped[key] = [];
+    grouped[key].push(f);
+  });
+  
+  // Render
+  const container = document.createElement('div');
+  Object.keys(grouped).forEach(dateKey => {
+    const files = grouped[dateKey];
+    const section = document.createElement('div');
+    section.style.marginBottom = '25px';
+    
+    section.innerHTML = `
+      <div style="font-weight:800; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid rgba(255,255,255,.1);">${dateKey}</div>
+    `;
+    
+    const grid = document.createElement('div');
+    grid.className = 'file-grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
+    
+    files.forEach(({item, path}) => {
+      const d = document.createElement('div');
+      d.className = 'file';
+      d.innerHTML = `
+        <div class="icon">${fileIcon(item.name)}</div>
+        <div style="font-weight:700;">${escapeHtml(item.name)}</div>
+        <small>${path.join(' › ') || 'Files'}</small>
+      `;
+      d.onclick = () => {
+        // Download file when clicked
+        if(item.file){
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(item.file);
+          a.download = item.name;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+      };
+      grid.appendChild(d);
+    });
+    
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+  
+  card.appendChild(container);
+  c.appendChild(card);
+}
+
+/* ---------------------------
+   TRASH / RECYCLE BIN
+   --------------------------- */
+function renderTrash(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  
+  card.innerHTML=`
+    <h2>🗑️ Trash</h2>
+    <p style="color:var(--muted); margin-bottom:15px;">Deleted files are stored here. Click a file to restore or permanently delete.</p>
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+      <button class="btn btn-danger" onclick="emptyTrash()">🗑️ Empty Trash</button>
+      <span style="color:var(--muted); line-height:40px;">${trashBin.length} item(s) in trash</span>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 320px; gap:14px; align-items:start;">
+      <div>
+        <div class="file-grid" id="trashGrid"></div>
+      </div>
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800; letter-spacing:.2px;">Inspector</div>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">Click a file to restore or delete.</div>
+        <div id="trashInspector" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  `;
+  
+  c.appendChild(card);
+  updateTrashGrid();
+  renderTrashInspector();
+}
+
+function emptyTrash(){
+  if(trashBin.length === 0) return;
+  const ok = confirm(`Permanently delete ${trashBin.length} item(s)? This cannot be undone!`);
+  if(!ok) return;
+  trashBin = [];
+  scheduleSave();
+  render();
+}
+
+function renderTrashInspector(){
+  const box = document.getElementById('trashInspector');
+  if(!box) return;
+
+  if(!selectedTrashItem){
+    box.innerHTML = `
+      <div style="padding:10px; border-radius:12px; background:rgba(255,255,255,.04); color:var(--muted); font-size:12px;">
+        No selection. Click a file to restore or delete it.
+      </div>
+    `;
+    return;
+  }
+
+  const it = selectedTrashItem.item;
+  const idx = selectedTrashItem.index;
+  const date = new Date(it.deletedAt).toLocaleString();
+  
+  let source = '📁 Files';
+  if(it.fromVault) source = '🔐 Vault';
+  if(it.fromMusic) source = '🎵 Music';
+
+  box.innerHTML=`
+    <div style="font-weight:800; margin-bottom:8px;">${escapeHtml(it.name)}</div>
+    <div style="color:var(--muted); font-size:12px; margin-bottom:4px;">From: ${source}</div>
+    <div style="color:var(--muted); font-size:12px; margin-bottom:14px;">Deleted: ${date}</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="restoreTrashItem()">♻️ Restore</button>
+      <button class="btn btn-danger" style="width:100%;" onclick="permanentDeleteTrashItem()">🗑️ Delete Forever</button>
+    </div>
+  `;
+}
+
+function restoreTrashItem(){
+  if(!selectedTrashItem) return;
+  const it = selectedTrashItem.item;
+  const idx = selectedTrashItem.index;
+  
+  // Restore to original location
+  if(it.fromVault){
+    vaultRoot.children = vaultRoot.children || [];
+    const restored = {...it};
+    delete restored.fromVault;
+    delete restored.deletedFrom;
+    delete restored.deletedAt;
+    vaultRoot.children.push(restored);
+    trashBin.splice(idx, 1);
+    scheduleSave();
+    selectedTrashItem = null;
+    render();
+    alert(`✅ Restored "${it.name}" to Vault!`);
+  } else if(it.fromMusic){
+    musicLibrary.children = musicLibrary.children || [];
+    const restored = {...it};
+    delete restored.fromMusic;
+    delete restored.deletedFrom;
+    delete restored.deletedAt;
+    musicLibrary.children.push(restored);
+    trashBin.splice(idx, 1);
+    scheduleSave();
+    selectedTrashItem = null;
+    render();
+    alert(`✅ Restored "${it.name}" to Music!`);
+  } else {
+    fsRoot.children = fsRoot.children || [];
+    const restored = {...it};
+    delete restored.deletedFrom;
+    delete restored.deletedAt;
+    fsRoot.children.push(restored);
+    trashBin.splice(idx, 1);
+    scheduleSave();
+    selectedTrashItem = null;
+    render();
+    alert(`✅ Restored "${it.name}" to Files!`);
+  }
+}
+
+function permanentDeleteTrashItem(){
+  if(!selectedTrashItem) return;
+  const it = selectedTrashItem.item;
+  const idx = selectedTrashItem.index;
+  
+  const ok = confirm(`Permanently delete "${it.name}"? This cannot be undone!`);
+  if(!ok) return;
+  
+  trashBin.splice(idx, 1);
+  scheduleSave();
+  selectedTrashItem = null;
+  render();
+}
+
+/* ---------------------------
+   MUSIC PLAYER
+   --------------------------- */
+function renderMusic(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  
+  const crumbsArr = ['Music', ...musicFolderStack.map(f=>f.name)];
+  const crumbs = crumbsArr.map((name,i)=>`<span class="crumb music-crumb" data-index="${i}">${escapeHtml(name)}</span>`).join('  ›  ');
+  
+  card.innerHTML=`
+    <h2>🎵 Music Library</h2>
+    <p style="color:var(--muted); margin-bottom:10px;">Only audio files allowed! Organize with folders and playlists.</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin:10px 0;">
+      <div style="color:var(--muted); font-size:12px;">${crumbs}</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-soft" onclick="musicGoHome()">🏠 Home</button>
+        <button class="btn btn-soft" onclick="musicGoBack()">⬅ Up</button>
+        <button class="btn btn-primary" onclick="musicNewFolder()">+ Playlist</button>
+        <button class="btn btn-accent" onclick="musicUploadFile()">Upload Music</button>
+      </div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 320px; gap:14px; align-items:start;">
+      <div>
+        <div class="file-grid" id="musicGrid"></div>
+      </div>
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800; letter-spacing:.2px;">Inspector</div>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">Click a song to see actions.</div>
+        <div id="musicInspector" style="margin-top:12px;"></div>
+      </div>
+    </div>
+    
+    <input type="file" id="musicFileInput" hidden multiple accept="audio/*" />
+  `;
+  
+  c.appendChild(card);
+  updateMusicGrid();
+  renderMusicInspector();
+}
+
+/* ---------------------------
+   EASTER EGG PAGE
+   --------------------------- */
+function renderEasterEgg(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  card.style.minHeight='500px';
+  
+  // Check if unlocked
+  const unlockedEggs = JSON.parse(localStorage.getItem('unlocked_easter_eggs') || '[]');
+  
+  card.innerHTML=`
+    <h2>🥚 Easter Eggs</h2>
+    <p style="color:var(--muted); margin-bottom:20px;">Enter secret codes to unlock hidden content!</p>
+    
+    <div style="max-width:600px; margin:0 auto; padding:40px 20px;">
+      <div style="text-align:center; margin-bottom:30px;">
+        <input type="text" id="easterEggInput" placeholder="Type a secret code..." style="width:100%; padding:14px 20px; border-radius:12px; border:2px solid var(--accent); background:rgba(255,255,255,.05); color:var(--text); font-size:16px; text-align:center;" />
+        <button class="btn btn-accent" onclick="checkEasterEgg()" style="margin-top:14px; width:100%; padding:14px;">🔓 Unlock</button>
+      </div>
+      
+      <div style="margin-top:40px;">
+        <h3 style="margin-bottom:14px;">🏆 Unlocked Easter Eggs (${unlockedEggs.length})</h3>
+        <div id="unlockedEggs"></div>
+      </div>
+    </div>
+  `;
+  
+  c.appendChild(card);
+  
+  // Display unlocked eggs
+  displayUnlockedEggs();
+  
+  // Add enter key support
+  setTimeout(() => {
+    const input = document.getElementById('easterEggInput');
+    if(input){
+      input.focus();
+      input.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') checkEasterEgg();
+      });
+    }
+  }, 100);
+}
+
+function checkEasterEgg(){
+  const input = document.getElementById('easterEggInput');
+  if(!input) return;
+  
+  const code = input.value.toLowerCase().trim();
+  if(!code) return;
+  
+  const eggs = {
+    'technoblade': {
+      name: 'Technoblade Never Dies',
+      description: 'A tribute to the legendary Minecraft YouTuber',
+      emoji: '👑',
+      action: () => window.open('https://wallpapers.com/images/featured-full/technoblade-pictures-b0at1vv82leke00a.jpg', '_blank')
+    },
+    'mehemmed_azeri': {
+      name: 'Created by Mehemmed_AZERI',
+      description: 'Check out the creator\'s profile!',
+      emoji: '🎨',
+      action: () => window.open('https://guns.lol/mehemmed_azeri', '_blank')
+    },
+    'claude': {
+      name: 'About Claude AI',
+      description: 'Meet your AI coding partner!',
+      emoji: '🤖',
+      action: () => {
+        alert('🤖 Hey! I\'m Claude!\n\n' +
+              '✨ I helped build this entire dashboard!\n\n' +
+              '👨‍💻 Created by: Mehemmed_AZERI\n' +
+              '🤖 AI Partner: Claude (by Anthropic)\n\n' +
+              '💪 Together we built:\n' +
+              '• Complete file management system\n' +
+              '• Password-protected vault\n' +
+              '• Music library with playlists\n' +
+              '• Multi-select & bulk operations\n' +
+              '• 10+ beautiful themes\n' +
+              '• Local chat system (FHUTC)\n' +
+              '• This Easter egg system!\n' +
+              '• And SO much more!\n\n' +
+              '🔥 Teamwork makes the dream work!\n' +
+              '🌐 Learn more: https://www.anthropic.com/claude\n\n' +
+              'Built with passion. 100% Free. 🚀');
+      }
+    },
+    'codder': {
+      name: 'Competitive Programmer',
+      description: 'Check out the coding skills!',
+      emoji: '💻',
+      action: () => window.open('https://vjudge.net/user/Muhammed_Hacker', '_blank')
+    },
+    'meme': {
+      name: 'Epic Meme',
+      description: 'Check out this legendary meme!',
+      emoji: '😂',
+      action: () => window.open('https://www.pinatafarm.com/p/71765706-3c9b-4e7b-a34c-3a17de1f36b6', '_blank')
+    },
+    'azerbaijan': {
+      name: 'Azerbaijan 🇦🇿',
+      description: 'Learn about beautiful Azerbaijan!',
+      emoji: '🇦🇿',
+      action: () => window.open('https://en.wikipedia.org/wiki/Azerbaijan', '_blank')
+    },
+    'a': {
+      name: 'Trade Offer',
+      description: 'I receive... you receive...',
+      emoji: '🤝',
+      action: () => window.open('https://media1.tenor.com/m/8c5f67DsgRYAAAAd/trade-offer-rickroll.gif', '_blank')
+    },
+    'sus': {
+      name: 'Among Us SUS',
+      description: 'That\'s kinda sus bro...',
+      emoji: '📮',
+      action: () => window.open('https://youtube.com/shorts/Xeqqv-usdsc?si=r9e-KG62idiRVzOt', '_blank')
+    }
+  };
+  
+  if(eggs[code]){
+    const egg = eggs[code];
+    const unlockedEggs = JSON.parse(localStorage.getItem('unlocked_easter_eggs') || '[]');
+    
+    if(!unlockedEggs.includes(code)){
+      unlockedEggs.push(code);
+      localStorage.setItem('unlocked_easter_eggs', JSON.stringify(unlockedEggs));
+      alert(`✨ Easter Egg Unlocked!\n\n${egg.name}\n${egg.description}`);
+    }
+    
+    egg.action();
+    input.value = '';
+    render(); // Re-render to update counter
+  } else {
+    alert('❌ Invalid code! Keep trying...');
+    input.value = '';
+  }
+}
+
+function displayUnlockedEggs(){
+  const container = document.getElementById('unlockedEggs');
+  if(!container) return;
+  
+  const unlockedEggs = JSON.parse(localStorage.getItem('unlocked_easter_eggs') || '[]');
+  
+  if(unlockedEggs.length === 0){
+    container.innerHTML = '<p style="text-align:center; color:var(--muted); padding:40px;">No Easter eggs unlocked yet! Try entering secret codes...</p>';
+    return;
+  }
+  
+  const eggData = {
+    'technoblade': {
+      name: 'Technoblade Never Dies',
+      description: 'A tribute to the legendary Minecraft YouTuber',
+      emoji: '👑'
+    },
+    'mehemmed_azeri': {
+      name: 'Created by Mehemmed_AZERI',
+      description: 'Check out the creator\'s profile!',
+      emoji: '🎨'
+    },
+    'claude': {
+      name: 'About Claude AI',
+      description: 'Meet your AI coding partner!',
+      emoji: '🤖'
+    },
+    'codder': {
+      name: 'Competitive Programmer',
+      description: 'Check out the coding skills!',
+      emoji: '💻'
+    },
+    'meme': {
+      name: 'Epic Meme',
+      description: 'Check out this legendary meme!',
+      emoji: '😂'
+    },
+    'azerbaijan': {
+      name: 'Azerbaijan 🇦🇿',
+      description: 'Learn about beautiful Azerbaijan!',
+      emoji: '🇦🇿'
+    },
+    'a': {
+      name: 'Trade Offer',
+      description: 'I receive... you receive...',
+      emoji: '🤝'
+    },
+    'sus': {
+      name: 'Among Us SUS',
+      description: 'That\'s kinda sus bro...',
+      emoji: '📮'
+    }
+  };
+  
+  container.innerHTML = unlockedEggs.map(code => {
+    const egg = eggData[code] || {name: code, description: 'Unknown egg', emoji: '🥚'};
+    return `
+      <div style="padding:16px; background:rgba(255,255,255,.05); border-radius:12px; margin-bottom:12px; border-left:4px solid var(--accent2);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:32px;">${egg.emoji}</div>
+          <div style="flex:1;">
+            <div style="font-weight:700; margin-bottom:4px;">${egg.name}</div>
+            <div style="font-size:13px; color:var(--muted);">${egg.description}</div>
+          </div>
+          <button class="btn btn-primary" onclick="activateEasterEgg('${code}')" style="padding:8px 14px; font-size:13px;">🔗 Open</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function activateEasterEgg(code){
+  const eggs = {
+    'technoblade': () => window.open('https://wallpapers.com/images/featured-full/technoblade-pictures-b0at1vv82leke00a.jpg', '_blank'),
+    'mehemmed_azeri': () => window.open('https://guns.lol/mehemmed_azeri', '_blank'),
+    'claude': () => {
+      alert('🤖 Hey! I\'m Claude!\n\n' +
+            '✨ I helped build this entire dashboard!\n\n' +
+            '👨‍💻 Created by: Mehemmed_AZERI\n' +
+            '🤖 AI Partner: Claude (by Anthropic)\n\n' +
+            '💪 Together we built:\n' +
+            '• Complete file management system\n' +
+            '• Password-protected vault\n' +
+            '• Music library with playlists\n' +
+            '• Multi-select & bulk operations\n' +
+            '• 10+ beautiful themes\n' +
+            '• Local chat system (FHUTC)\n' +
+            '• This Easter egg system!\n' +
+            '• And SO much more!\n\n' +
+            '🔥 Teamwork makes the dream work!\n' +
+            '🌐 Learn more: https://www.anthropic.com/claude\n\n' +
+            'Built with passion. 100% Free. 🚀');
+    },
+    'codder': () => window.open('https://vjudge.net/user/Muhammed_Hacker', '_blank'),
+    'meme': () => window.open('https://www.pinatafarm.com/p/71765706-3c9b-4e7b-a34c-3a17de1f36b6', '_blank'),
+    'azerbaijan': () => window.open('https://en.wikipedia.org/wiki/Azerbaijan', '_blank'),
+    'a': () => window.open('https://media1.tenor.com/m/8c5f67DsgRYAAAAd/trade-offer-rickroll.gif', '_blank'),
+    'sus': () => window.open('https://youtube.com/shorts/Xeqqv-usdsc?si=r9e-KG62idiRVzOt', '_blank')
+  };
+  
+  if(eggs[code]) eggs[code]();
+}
+
+/* ---------------------------
+   Other pages
+   --------------------------- */
+async function renderStats(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>System Overview</h2>
+    <div class="stat"><span>Platform</span><span>${escapeHtml(navigator.platform || 'N/A')}</span></div>
+    <div class="stat"><span>CPU Cores</span><span>${navigator.hardwareConcurrency || 'N/A'}</span></div>
+    <div class="stat"><span>Memory (Device)</span><span>${navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'N/A'}</span></div>
+    <div class="stat"><span>Language</span><span>${escapeHtml(navigator.language || 'N/A')}</span></div>
+    <div class="stat"><span>Online Status</span><span id="onlineStatus">Checking...</span></div>
+    <div class="stat"><span>Heap Memory</span><span id="heapMemory">Calculating...</span></div>
+    <div class="stat"><span>Storage Used</span><span id="storageUsed">Calculating...</span></div>
+    <div class="stat"><span>Battery</span><span id="batteryStatus">Checking...</span></div>
+    <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,.05); border-radius:8px;">
+      <button class="btn btn-primary" onclick="render()">🔄 Refresh Stats</button>
+      <button class="btn btn-accent" onclick="addGameLauncher()">+ Add Game Launcher</button>
+    </div>
+  `;
+  c.appendChild(card);
+  
+  // Get real stats
+  const stats = await getRealSystemStats();
+  
+  document.getElementById('onlineStatus').textContent = stats.online;
+  document.getElementById('heapMemory').textContent = stats.memory;
+  document.getElementById('storageUsed').textContent = stats.storage;
+  document.getElementById('batteryStatus').textContent = stats.battery;
+}
+
+function renderGames(c){
+  const card = document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>🎮 Game Essentials</h2>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:12px;">Launch games, organize mods/saves, and keep everything tidy!</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="view='files';render();">📁 Open File Manager</button>
+      <button class="btn btn-accent" onclick="addGameLauncher()">🚀 Add Game Launcher</button>
+      <button class="btn btn-accent" onclick="quickMakeGamePack()">📦 Create Game Pack</button>
+      <button class="btn btn-soft" onclick="saveInternetShortcutPrompt()">🔗 Save Game Link</button>
+    </div>
+    <div style="margin-top:16px; padding:14px; background:rgba(255,255,255,.05); border-radius:10px;">
+      <div style="font-weight:800; margin-bottom:8px;">💡 Pro Tips</div>
+      <ul style="font-size:13px; color:var(--muted); margin:0; padding-left:20px;">
+        <li>Game launchers can open Steam games: <code style="background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px;">steam://rungameid/XXXXX</code></li>
+        <li>Create .url files for quick browser game access</li>
+        <li>Organize mods and saves in game pack folders</li>
+        <li>Double-click .game files to launch!</li>
+      </ul>
+    </div>
+  `;
+  c.appendChild(card);
+}
+
+function saveInternetShortcutPrompt(){
+  const url = prompt('Paste a URL to save as a shortcut (.url)');
+  if(!url) return;
+  const nameRaw = prompt('Name for shortcut file', 'shortcut.url') || 'shortcut.url';
+  const name = nameRaw.toLowerCase().endsWith('.url') ? nameRaw : (nameRaw + '.url');
+  const content = `[InternetShortcut]\nURL=${url.trim()}\n`;
+  const f = new File([content], name, { type: 'text/plain' });
+  currentFolder.children = currentFolder.children || [];
+  currentFolder.children.push({ id: uid(), name: f.name, type:'file', file: f });
+  scheduleSave();
+  view='files';
+  render();
+}
+
+function quickMakeGamePack(){
+  const baseName = prompt('Game name (e.g., Minecraft)');
+  if(!baseName) return;
+  const bn = baseName.trim();
+  if(!bn) return;
+
+  const readme = `Game pack: ${bn}\n\n- Put mods in Mods/\n- Put saves in Saves/\n- Put configs in Configs/\n`;
+  const pack = { id: uid(), name: bn, type:'folder', children: [
+    { id: uid(), name:'Mods', type:'folder', children: [] },
+    { id: uid(), name:'Saves', type:'folder', children: [] },
+    { id: uid(), name:'Configs', type:'folder', children: [] },
+    { id: uid(), name:'Readme.txt', type:'file', file: makeTextFile('Readme.txt', readme) }
+  ]};
+
+  currentFolder.children = currentFolder.children || [];
+  currentFolder.children.push(pack);
+  scheduleSave();
+  view='files';
+  render();
+}
+
+function renderTools(c){
+  const wrap = document.createElement('div');
+  wrap.className='card';
+  wrap.style.gridColumn='1 / -1';
+  wrap.innerHTML=`
+    <h2>Tools & Plugins</h2>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:12px;">Local utilities + a lightweight notes area. (Browser-safe, no real disk access.)</div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800;">Quick Utilities</div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-soft" onclick="view='files';render();">Open Files</button>
+          <button class="btn btn-soft" onclick="view='stats';render();">System Info</button>
+          <button class="btn btn-soft" onclick="view='games';render();">Game Essentials</button>
+          <button class="btn btn-primary" onclick="exportIndexAsText()">Export file list</button>
+        </div>
+        <div style="margin-top:12px; color:var(--muted); font-size:12px;">Export writes a text file into your current folder so you can download it.</div>
+      </div>
+
+      <div class="card" style="padding:14px; background:#0e1130; box-shadow:none;">
+        <div style="font-weight:800;">Plugin Notes</div>
+        <textarea id="pluginNotes" placeholder="Write ideas for plugins…" style="width:100%; min-height:120px; padding:10px 12px; border-radius:12px; border:none; outline:none; background:rgba(255,255,255,.06); color:var(--text); resize:vertical;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+          <button class="btn btn-accent" onclick="saveNotes()">Save</button>
+          <button class="btn btn-soft" onclick="loadNotes()">Load</button>
+          <button class="btn btn-danger" onclick="clearNotes()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; color:var(--muted); font-size:12px;">Tip: In the header search box, press <b>Enter</b> to search the web. While focused in the web search box, press <b>Ctrl+S</b> to save that search as a .url shortcut into your current folder.</div>
+  `;
+  c.appendChild(wrap);
+  loadNotes();
+}
+
+function exportIndexAsText(){
+  const lines = [];
+  function walk(node, path){
+    if(node.type!=='folder') return;
+    for(const ch of (node.children||[])){
+      const full = ['Home', ...path, ch.name].join(' / ');
+      lines.push(`${ch.type.toUpperCase()}  ${full}`);
+      if(ch.type==='folder') walk(ch, path.concat([ch.name]));
+    }
+  }
+  walk(fsRoot, []);
+
+  const content = lines.join('\n') || 'No items.';
+  const f = new File([content], 'file-index.txt', { type: 'text/plain' });
+  currentFolder.children = currentFolder.children || [];
+  currentFolder.children.push({ id: uid(), name: f.name, type:'file', file: f });
+  scheduleSave();
+  view='files';
+  render();
+  alert('Export created: file-index.txt (in your current folder). Select it and download.');
+}
+
+function saveNotes(){
+  const t = document.getElementById('pluginNotes');
+  localStorage.setItem('mypc_plugin_notes', t ? t.value : '');
+}
+function loadNotes(){
+  const t = document.getElementById('pluginNotes');
+  if(!t) return;
+  t.value = localStorage.getItem('mypc_plugin_notes') || '';
+}
+function clearNotes(){
+  localStorage.removeItem('mypc_plugin_notes');
+  const t = document.getElementById('pluginNotes');
+  if(t) t.value = '';
+}
+
+function calculateUsage(){
+  let bytes = 0;
+  function walk(node){
+    if(node.type==='file' && node.file && typeof node.file.size==='number') bytes += node.file.size;
+    if(node.type==='folder') (node.children||[]).forEach(walk);
+  }
+  walk(fsRoot);
+  return bytes;
+}
+
+function resetFilesystem(){
+  // Password protection - use vault password if set, otherwise default "1234"
+  const requiredPassword = vaultPassword || '1234';
+  const enteredPassword = prompt('⚠️ FORMAT STORAGE?\n\nEnter password to confirm:');
+  
+  if(!enteredPassword){
+    return; // User cancelled
+  }
+  
+  if(enteredPassword !== requiredPassword){
+    alert('❌ Wrong password! Format cancelled.');
+    return;
+  }
+  
+  const ok = confirm('FORMAT STORAGE?\n\nThis will DELETE ALL FILES and reset to a fresh start (Games, Projects, notes.txt).');
+  if(!ok) return;
+
+  fsRoot.children = [
+    { id: uid(), name: 'Games', type: 'folder', children: [
+      { id: uid(), name: 'Essential', type: 'folder', children: [] },
+      { id: uid(), name: 'Mods', type: 'folder', children: [] },
+      { id: uid(), name: 'Saves', type: 'folder', children: [] }
+    ]},
+    { id: uid(), name: 'Projects', type: 'folder', children: [] },
+    { id: uid(), name: 'notes.txt', type: 'file', file: makeTextFile('notes.txt', 'Welcome!\n\nFresh start ✔') }
+  ];
+
+  folderStack = [];
+  currentFolder = fsRoot;
+  selectedItem = null;
+  scheduleSave();
+  view='files';
+  render();
+  
+  alert('✅ Storage formatted successfully!');
+}
+
+function renderAdvanced(c){
+  const used = calculateUsage();
+  const limit = 100 * 1024 * 1024 * 1024; // 100 GB logical cap
+  const pct = Math.min(100, (used / limit) * 100);
+
+  const card = document.createElement('div');
+  card.className='card';
+  card.style.gridColumn='1 / -1';
+  card.innerHTML = `
+    <h2>Advanced Storage</h2>
+
+    <div style="margin:14px 0;">
+      <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">Storage usage</div>
+      <div style="height:12px; background:rgba(255,255,255,.1); border-radius:999px; overflow:hidden;">
+        <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--accent),var(--accent2));"></div>
+      </div>
+      <div style="margin-top:6px; font-size:13px;">
+        ${humanBytes(used)} used / 100 GB
+      </div>
+    </div>
+
+    <div style="margin-top:20px; padding:14px; border-radius:14px; background:rgba(255,255,255,.05);">
+      <div style="font-weight:800;">⏱️ Auto-Backup</div>
+      <div style="font-size:13px; color:var(--muted); margin:6px 0 12px;">
+        Automatically export all files to download every 30 minutes when enabled.
+        ${lastBackupTime ? '<br>Last backup: ' + new Date(lastBackupTime).toLocaleString() : ''}
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn ${autoBackupEnabled ? 'btn-danger' : 'btn-primary'}" onclick="toggleAutoBackup()">
+          ${autoBackupEnabled ? '⏸️ Disable Auto-Backup' : '▶️ Enable Auto-Backup'}
+        </button>
+        ${autoBackupEnabled ? '<span style="color:var(--accent); font-size:13px;">✅ Active</span>' : '<span style="color:var(--muted); font-size:13px;">⏸️ Disabled</span>'}
+      </div>
+      <button class="btn btn-accent" onclick="manualBackup()" style="margin-top:10px;">📦 Manual Backup Now</button>
+    </div>
+    
+    <div style="margin-top:20px; padding:14px; border-radius:14px; background:rgba(255,255,255,.05);">
+      <div style="font-weight:800;">📄 README - Authorization & Copyright</div>
+      <div style="font-size:13px; color:var(--muted); margin:6px 0 8px;">
+        ⚠️ This information is permanent and cannot be deleted or edited.
+      </div>
+      <div style="background:#0a0a0a; padding:14px; border-radius:8px; font-family:monospace; font-size:12px; line-height:1.7; white-space:pre-wrap; color:var(--text); max-height:400px; overflow-y:auto;">═══════════════════════════════════════════════════════
+    DASHBOARD AUTHORIZATION & COPYRIGHT NOTICE
+═══════════════════════════════════════════════════════
+
+© ${new Date().getFullYear()} Mehemmed_AZERI
+Created with assistance from AI (Claude by Anthropic)
+
+VERSION: 2.0 Ultimate Edition
+CREATED: ${new Date().toLocaleDateString()}
+
+═══════════════════════════════════════════════════════
+    PURPOSE & USAGE
+═══════════════════════════════════════════════════════
+
+This program is designed to help you organize your files, 
+manage data, and streamline your workflow.
+
+FEATURES INCLUDED:
+• File Manager with password-protected Vault
+• Music Library (audio files only)
+• Trash/Recycle Bin with restore
+• Timeline view of all files
+• 10 Beautiful themes with effects
+• Advanced search & filters
+• Auto-backup system
+• Undo/Redo functionality
+• Local chat support (global chat disabled for safety)
+
+═══════════════════════════════════════════════════════
+    LEGAL WARNING - READ CAREFULLY
+═══════════════════════════════════════════════════════
+
+⚠️ UNAUTHORIZED COPYING, REDISTRIBUTION, OR CLAIMING 
+   AUTHORSHIP OF THIS WORK IS STRICTLY PROHIBITED.
+
+Creating a copy-cat application or claiming this as your 
+own work WILL result in LEGAL CONSEQUENCES including but 
+not limited to:
+  • Copyright infringement charges
+  • Potential criminal prosecution
+  • Financial penalties
+  • Legal action under applicable laws
+
+If you created this: These are YOUR RULES.
+If you're working with this: Your work is YOUR WORK.
+
+═══════════════════════════════════════════════════════
+    PRIVACY & DATA SECURITY
+═══════════════════════════════════════════════════════
+
+✅ YOUR DATA IS NOT SHARED WITH ANYONE
+✅ All data stored locally in your browser (IndexedDB)
+✅ No server uploads or tracking
+✅ Simple, reliable, and secure
+✅ Works completely offline
+
+═══════════════════════════════════════════════════════
+    SUPPORTED USE CASES
+═══════════════════════════════════════════════════════
+
+• Game file organization
+• Music library management
+• Personal data storage
+• Project file management
+• Local chatting (global chat currently disabled)
+
+═══════════════════════════════════════════════════════
+    ONLINE CHAT SERVER SETUP (OPTIONAL)
+═══════════════════════════════════════════════════════
+
+Want to enable online chatting? Follow these steps:
+
+📥 STEP 1: DOWNLOAD SERVER FILE
+Click the button below in Advanced section to download 
+the Python server file (smypcd.py)
+
+💻 STEP 2: INSTALL REQUIREMENTS (Windows)
+Open Command Prompt (cmd) or PowerShell and run:
+
+  pip install fastapi uvicorn websockets
+
+📝 STEP 3: RUN THE SERVER
+Navigate to the folder with smypcd.py and run:
+
+  python smypcd.py
+
+The server will start on port 45831
+
+🌐 STEP 4: CONFIGURE DASHBOARD
+Go to Messages tab, click "Configure Server"
+Set:
+  • Host: localhost (or your IP for network access)
+  • Port: 45831
+  • Token: mehemmed
+
+✅ DONE! You can now chat online!
+
+NOTE: Keep the terminal window open while chatting.
+      To stop server, press Ctrl+C in terminal.
+
+═══════════════════════════════════════════════════════
+
+This is free software created to help YOU.
+Respect the work. Don't steal it.
+
+- Mehemmed_AZERI</div>
+      <button class="btn btn-accent" onclick="downloadPythonServer()" style="margin-top:10px;">📥 Download Chat Server (smypcd.py)</button>
+    </div>
+    
+    <div style="margin-top:20px; padding:14px; border-radius:14px; background:rgba(255,255,255,.05);">
+      <div style="font-weight:800;">🥚 Easter Eggs</div>
+      <div style="font-size:13px; color:var(--muted); margin:6px 0 12px;">
+        Enable hidden Easter eggs and secrets in the dashboard.
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn ${localStorage.getItem('easter_eggs_enabled') === 'true' ? 'btn-danger' : 'btn-primary'}" onclick="toggleEasterEggs()">
+          ${localStorage.getItem('easter_eggs_enabled') === 'true' ? '🚫 Disable Easter Eggs' : '✅ Enable Easter Eggs'}
+        </button>
+        ${localStorage.getItem('easter_eggs_enabled') === 'true' ? '<span style="color:var(--accent2); font-size:13px;">🥚 Activated!</span>' : '<span style="color:var(--muted); font-size:13px;">Disabled</span>'}
+      </div>
+    </div>
+    
+    <div style="margin-top:20px; padding:14px; border-radius:14px; background:rgba(255,255,255,.05);">
+      <div style="font-weight:800; color:var(--danger);">Danger zone</div>
+      <div style="font-size:13px; color:var(--muted); margin:6px 0 12px;">
+        This resets EVERYTHING and clears IndexedDB.<br>
+        ${vaultPassword ? '🔐 Protected by your Vault password' : '🔐 Default password: <code style="background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px;">1234</code>'}
+      </div>
+      <button class="btn btn-danger" onclick="resetFilesystem()">FORMAT STORAGE</button>
+    </div>
+  `;
+
+  c.appendChild(card);
+}
+
+/* ---------------------------
+   AUTO-BACKUP SYSTEM
+   --------------------------- */
+function toggleAutoBackup(){
+  autoBackupEnabled = !autoBackupEnabled;
+  localStorage.setItem('auto_backup_enabled', autoBackupEnabled);
+  
+  if(autoBackupEnabled){
+    startAutoBackup();
+    alert('✅ Auto-backup enabled! Files will export every 30 minutes.');
+  } else {
+    stopAutoBackup();
+    alert('⏸️ Auto-backup disabled.');
+  }
+  
+  render();
+}
+
+function toggleEasterEggs(){
+  const enabled = localStorage.getItem('easter_eggs_enabled') === 'true';
+  localStorage.setItem('easter_eggs_enabled', !enabled);
+  updateEasterEggNav();
+  alert(enabled ? '🥚 Easter eggs disabled!' : '🥚 Easter eggs enabled! Check the navigation!');
+  render();
+}
+
+function updateEasterEggNav(){
+  const btn = document.getElementById('easterEggNav');
+  if(btn){
+    btn.style.display = localStorage.getItem('easter_eggs_enabled') === 'true' ? 'block' : 'none';
+  }
+}
+
+let autoBackupInterval = null;
+
+function startAutoBackup(){
+  stopAutoBackup(); // Clear any existing interval
+  autoBackupInterval = setInterval(() => {
+    manualBackup(true); // true = silent mode
+  }, 30 * 60 * 1000); // 30 minutes
+}
+
+function stopAutoBackup(){
+  if(autoBackupInterval){
+    clearInterval(autoBackupInterval);
+    autoBackupInterval = null;
+  }
+}
+
+async function manualBackup(silent = false){
+  try {
+    // Create a ZIP with all files
+    const zip = new JSZip();
+    
+    // Add files from Files section
+    await addFolderToZip(zip, fsRoot, 'Files');
+    
+    // Add files from Vault
+    if(vaultRoot.children && vaultRoot.children.length > 0){
+      await addFolderToZip(zip, vaultRoot, 'Vault');
+    }
+    
+    // Add files from Music
+    if(musicLibrary.children && musicLibrary.children.length > 0){
+      await addFolderToZip(zip, musicLibrary, 'Music');
+    }
+    
+    // Generate and download
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    a.href = URL.createObjectURL(blob);
+    a.download = `dashboard-backup-${timestamp}.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    
+    lastBackupTime = Date.now();
+    if(!silent) alert('✅ Backup downloaded successfully!');
+  } catch(e) {
+    console.error('Backup failed:', e);
+    if(!silent) alert('❌ Backup failed!');
+  }
+}
+
+async function addFolderToZip(zip, folder, path = ''){
+  for(const child of (folder.children || [])){
+    const childPath = path ? `${path}/${child.name}` : child.name;
+    if(child.type === 'folder'){
+      await addFolderToZip(zip, child, childPath);
+    } else if(child.file){
+      zip.file(childPath, child.file);
+    }
+  }
+}
+
+// Start auto-backup if enabled
+if(autoBackupEnabled){
+  startAutoBackup();
+}
+
+/* ---------------------------
+   PYTHON SERVER DOWNLOAD
+   --------------------------- */
+function downloadPythonServer(){
+  const pythonCode = `import json
+import time
+import sqlite3
+import os
+import base64
+from typing import Dict
+from pathlib import Path
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+# =========================
+# CONFIG
+# =========================
+PORT = 45831
+SECRET_TOKEN = "mehemmed"
+UPLOAD_DIR = "uploads"
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# =========================
+# APP
+# =========================
+app = FastAPI()
+
+# Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =========================
+# RUNTIME STATE
+# =========================
+clients: Dict[str, WebSocket] = {}
+
+# =========================
+# HELPERS
+# =========================
+def now():
+    return int(time.time() * 1000)
+
+def log(msg):
+    print(f"[SERVER] {msg}")
+
+def safe_filename(filename: str) -> str:
+    """Remove path components to prevent directory traversal"""
+    return os.path.basename(filename)
+
+# =========================
+# DATABASE
+# =========================
+db = sqlite3.connect("chat.db", check_same_thread=False)
+cur = db.cursor()
+
+# Check if old schema exists and migrate
+try:
+    cur.execute("SELECT type FROM messages LIMIT 1")
+except sqlite3.OperationalError:
+    # Old schema detected - migrate it
+    log("Migrating old database schema...")
+    
+    # Backup old table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages_old AS 
+        SELECT * FROM messages
+    """)
+    
+    # Drop old table
+    cur.execute("DROP TABLE IF EXISTS messages")
+    
+    # Create new table with updated schema
+    cur.execute("""
+    CREATE TABLE messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT,
+        sender TEXT,
+        receiver TEXT,
+        text TEXT,
+        filename TEXT,
+        stored_filename TEXT,
+        filesize INTEGER,
+        mime_type TEXT,
+        timestamp INTEGER
+    )
+    """)
+    
+    # Migrate old data (text messages only)
+    try:
+        cur.execute("""
+            INSERT INTO messages (type, sender, receiver, text, timestamp)
+            SELECT 'message', sender, receiver, text, timestamp
+            FROM messages_old
+        """)
+        log("Migration complete!")
+    except:
+        log("No old data to migrate")
+    
+    db.commit()
+
+# Create tables if they don't exist
+cur.execute("""
+CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT,
+    sender TEXT,
+    receiver TEXT,
+    text TEXT,
+    filename TEXT,
+    stored_filename TEXT,
+    filesize INTEGER,
+    mime_type TEXT,
+    timestamp INTEGER
+)
+""")
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    last_seen INTEGER
+)
+""")
+
+db.commit()
+
+# =========================
+# DATABASE HELPER FUNCTIONS
+# =========================
+
+def save_message_to_db(msg_type, sender, text=None, filename=None, stored=None, size=None, mime=None, timestamp=None):
+    """Save message to database"""
+    try:
+        cur.execute("""
+            INSERT INTO messages (type, sender, receiver, text, filename, stored_filename, filesize, mime_type, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (msg_type, sender, 'global', text, filename, stored, size, mime, timestamp or now()))
+        db.commit()
+    except Exception as e:
+        log(f"Database error: {e}")
+
+def get_message_history(limit=100):
+    """Get recent message history from database"""
+    try:
+        cur.execute("""
+            SELECT type, sender, text, filename, stored_filename, filesize, mime_type, timestamp
+            FROM messages
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (limit,))
+        
+        messages = []
+        for row in cur.fetchall():
+            msg_type, sender, text, filename, stored, size, mime, ts = row
+            
+            if msg_type == 'message':
+                messages.append({
+                    "type": "message",
+                    "from": sender,
+                    "text": text,
+                    "time": ts
+                })
+            elif msg_type == 'file':
+                messages.append({
+                    "type": "file",
+                    "from": sender,
+                    "name": filename,
+                    "stored": stored,
+                    "size": size,
+                    "mime": mime,
+                    "time": ts
+                })
+        
+        # Reverse to get chronological order (oldest first)
+        return list(reversed(messages))
+    except Exception as e:
+        log(f"Error fetching history: {e}")
+        return []
+
+# =========================
+# WEBSOCKET
+# =========================
+@app.websocket("/ws/{username}/{token}")
+async def websocket_endpoint(ws: WebSocket, username: str, token: str):
+    await ws.accept()
+
+    if token != SECRET_TOKEN:
+        await ws.close()
+        return
+
+    clients[username] = ws
+    log(f"{username} connected")
+
+    # Send chat history to newly connected user
+    try:
+        history = get_message_history(limit=100)
+        if history:
+            await ws.send_json({
+                "type": "history",
+                "messages": history
+            })
+            log(f"Sent {len(history)} messages to {username}")
+    except Exception as e:
+        log(f"Error sending history: {e}")
+
+    try:
+        while True:
+            raw = await ws.receive_text()
+            data = json.loads(raw)
+
+            # -------- TEXT MESSAGE --------
+            if data.get("type") == "message":
+                sender = data["from"]
+                text = data["text"]
+                ts = data.get("time", now())
+
+                # Save to database
+                save_message_to_db('message', sender, text=text, timestamp=ts)
+
+                payload = {
+                    "type": "message",
+                    "from": sender,
+                    "text": text,
+                    "time": ts
+                }
+
+                # Broadcast to all OTHER clients
+                for u, c in clients.items():
+                    if u != sender:
+                        await c.send_json(payload)
+
+            # -------- FILE MESSAGE --------
+            if data.get("type") == "file":
+                sender = data["from"]
+                size = data.get("size", 0)
+                
+                # Check file size
+                if size > MAX_FILE_SIZE:
+                    await ws.send_json({"error": "File too large (max 25MB)"})
+                    continue
+                
+                filename = safe_filename(data["name"])
+                mime = data.get("mime", "application/octet-stream")
+                b64 = data["data"]
+                ts = data.get("time", now())
+
+                safe_name = f"{ts}_{filename}"
+                path = os.path.join(UPLOAD_DIR, safe_name)
+
+                try:
+                    file_data = base64.b64decode(b64)
+                    with open(path, "wb") as f:
+                        f.write(file_data)
+                    
+                    log(f"File saved: {safe_name} ({size} bytes)")
+                except Exception as e:
+                    log(f"Error saving file: {e}")
+                    await ws.send_json({"error": "Upload failed"})
+                    continue
+
+                # Save to database
+                save_message_to_db('file', sender, filename=filename, stored=safe_name, size=size, mime=mime, timestamp=ts)
+
+                payload = {
+                    "type": "file",
+                    "from": sender,
+                    "name": filename,
+                    "stored": safe_name,
+                    "size": size,
+                    "mime": mime,
+                    "time": ts
+                }
+
+                # Broadcast to all OTHER clients
+                for u, c in clients.items():
+                    if u != sender:
+                        await c.send_json(payload)
+
+    except WebSocketDisconnect:
+        log(f"{username} disconnected")
+    finally:
+        clients.pop(username, None)
+
+# =========================
+# FILE DOWNLOAD
+# =========================
+@app.get("/download/{filename}")
+def download_file(filename: str):
+    # Security: prevent path traversal
+    filename = safe_filename(filename)
+    path = os.path.join(UPLOAD_DIR, filename)
+    
+    if not os.path.isfile(path):
+        return {"error": "file not found"}
+    
+    return FileResponse(path, filename=filename)
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
+`;
+
+  const blob = new Blob([pythonCode], { type: 'text/x-python' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'smypcd.py';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  
+  alert('✅ Downloaded smypcd.py!\n\nNext steps:\n1. Install: pip install fastapi uvicorn\n2. Run: python smypcd.py');
+}
+
+/* ---------------------------
+   Internet search & shortcuts
+   --------------------------- */
+function internetSearch(){
+  const q = (document.getElementById('webSearch')?.value || '').trim();
+  if(!q) return;
+  const base = document.getElementById('engine')?.value || 'https://www.google.com/search?q=';
+  window.open(base + encodeURIComponent(q), '_blank', 'noopener,noreferrer');
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && document.activeElement && document.activeElement.id === 'webSearch'){
+    internetSearch();
+  }
+});
+
+function saveWebQueryShortcut(){
+  const q = (document.getElementById('webSearch')?.value || '').trim();
+  if(!q) return;
+  const base = document.getElementById('engine')?.value || 'https://www.google.com/search?q=';
+  const url = base + encodeURIComponent(q);
+  const name = (`Search - ${q}`.slice(0, 60) + '.url');
+  const content = `[InternetShortcut]\nURL=${url}\n`;
+  const f = new File([content], name, { type: 'text/plain' });
+  currentFolder.children = currentFolder.children || [];
+  currentFolder.children.push({ id: uid(), name: f.name, type:'file', file: f });
+  scheduleSave();
+  view='files';
+  render();
+}
+
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
+    if(document.activeElement && document.activeElement.id==='webSearch'){
+      e.preventDefault();
+      saveWebQueryShortcut();
+    }
+  }
+});
+
+/* ---------------------------
+   Clock
+   --------------------------- */
+setInterval(()=>{
+  const el = document.getElementById('clock');
+  if(el) el.textContent = new Date().toLocaleTimeString();
+},1000);
+
+/* ---------------------------
+   IndexedDB persistence (AUTO LOAD)
+   --------------------------- */
+const DB_NAME = 'mypc_dashboard';
+const DB_VERSION = 1;
+const STORE = 'filesystem';
+let db = null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE);
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e);
+  });
+}
+
+function safeClone(obj){
+  try{ return structuredClone(obj); }catch{}
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function saveFS(){
+  if(!db) return;
+  const tx = db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put(safeClone(fsRoot),'root');
+  tx.objectStore(STORE).put(safeClone(vaultRoot),'vault');
+  tx.objectStore(STORE).put(safeClone(musicLibrary),'music');
+  tx.objectStore(STORE).put(safeClone(trashBin),'trash');
+}
+
+function loadFS(){
+  return new Promise(resolve=>{
+    if(!db) return resolve(false);
+    const tx = db.transaction(STORE,'readonly');
+    
+    // Load main filesystem
+    const req = tx.objectStore(STORE).get('root');
+    req.onsuccess = ()=>{
+      if(req.result){
+        Object.assign(fsRoot, req.result);
+        currentFolder = fsRoot;
+        folderStack = [];
+        selectedItem = null;
+      }
+    };
+    
+    // Load vault
+    const vaultReq = tx.objectStore(STORE).get('vault');
+    vaultReq.onsuccess = ()=>{
+      if(vaultReq.result){
+        Object.assign(vaultRoot, vaultReq.result);
+        currentVaultFolder = vaultRoot;
+        vaultFolderStack = [];
+      }
+    };
+    
+    // Load music
+    const musicReq = tx.objectStore(STORE).get('music');
+    musicReq.onsuccess = ()=>{
+      if(musicReq.result){
+        Object.assign(musicLibrary, musicReq.result);
+        currentMusicFolder = musicLibrary;
+        musicFolderStack = [];
+      }
+    };
+    
+    // Load trash
+    const trashReq = tx.objectStore(STORE).get('trash');
+    trashReq.onsuccess = ()=>{
+      if(trashReq.result){
+        trashBin = trashReq.result;
+      }
+      resolve(true);
+    };
+    
+    req.onerror = ()=>resolve(false);
+  });
+}
+
+function scheduleSave(){
+  clearTimeout(scheduleSave._t);
+  scheduleSave._t = setTimeout(saveFS, 80);
+}
+
+/* ---------------------------
+   Self-tests
+   --------------------------- */
+function runSelfTests(){
+  console.assert(typeof render === 'function', 'render missing');
+  console.assert(typeof newFolder === 'function', 'newFolder missing');
+  console.assert(typeof uploadFile === 'function', 'uploadFile missing');
+  console.assert(typeof renderInspector === 'function', 'renderInspector missing');
+  console.assert(typeof fileIcon === 'function', 'fileIcon missing');
+  console.assert('a\n'.includes('\n'), 'newline escaping check');
+  console.assert(typeof indexedDB === 'object', 'IndexedDB missing');
+  console.assert(typeof openDB === 'function', 'openDB missing');
+  console.assert(typeof saveFS === 'function', 'saveFS missing');
+  console.assert(typeof loadFS === 'function', 'loadFS missing');
+  console.assert(typeof exportFolderAsZip === 'function', 'exportFolderAsZip missing');
+  console.assert(typeof openViewer === 'function', 'openViewer missing');
+  console.assert(typeof saveEditor === 'function', 'saveEditor missing');
+  console.assert(typeof closeViewer === 'function', 'closeViewer missing');
+  console.assert(typeof downloadSelected === 'function', 'downloadSelected missing');
+  console.assert(typeof resetFilesystem === 'function', 'resetFilesystem missing');
+  console.assert(typeof renderAdvanced === 'function', 'renderAdvanced missing');
+  console.assert(typeof connectChat === 'function', 'connectChat missing');
+  console.assert(typeof disconnectChat === 'function', 'disconnectChat missing');
+  console.assert(typeof setChatServerSettings === 'function', 'setChatServerSettings missing');
+  console.assert(typeof sendChatMessage === 'function', 'sendChatMessage missing');
+  console.assert(typeof renderMessages === 'function', 'renderMessages missing');
+  console.assert(typeof renderFHUTC === 'function', 'renderFHUTC missing');
+  console.assert(typeof pickChatFile === 'function', 'pickChatFile missing');
+  console.assert(typeof deleteChatFile === 'function', 'deleteChatFile missing');
+  console.assert(typeof clearChatHistory === 'function', 'clearChatHistory missing');
+}
+
+/* ---------------------------
+   Export globals explicitly (fixes "render is not defined" in strict/odd contexts)
+   --------------------------- */
+Object.assign(window, {
+  view,
+  render,
+  renderFiles,
+  renderStats,
+  renderGames,
+  renderTools,
+  renderAdvanced,
+  renderMessages,
+  renderFHUTC,
+  goHome,
+  goBack,
+  clearSearch,
+  updateFileGrid,
+  gotoPath,
+  openFolder,
+  newFolder,
+  uploadFile,
+  renameSelected,
+  deleteSelected,
+  renderInspector,
+  downloadSelected,
+  downloadItem,
+  exportFolderAsZip,
+  openViewer,
+  saveEditor,
+  closeViewer,
+  internetSearch,
+  saveWebQueryShortcut,
+  exportIndexAsText,
+  saveNotes,
+  loadNotes,
+  clearNotes,
+  saveInternetShortcutPrompt,
+  quickMakeGamePack,
+  resetFilesystem,
+  connectChat,
+  disconnectChat,
+  setChatName,
+  setChatServerSettings,
+  sendChatMessage,
+  renderMessagesView,
+  pickChatFile,
+  deleteChatFile,
+  clearChatHistory,
+  saveFHUTCFile,
+  filterFHUTC,
+  debugFHUTC,
+  setTheme,
+  openImageViewer,
+  closeImageViewer,
+  openAudioPlayer,
+  closeAudioPlayer,
+  contextAction,
+  launchGame,
+  addGameLauncher,
+  getRealSystemStats,
+  undo,
+  redo,
+  toggleView,
+  renderVault,
+  renderTrash,
+  renderMusic,
+  setVaultPassword,
+  unlockVault,
+  resetVaultPassword,
+  lockVault,
+  vaultGoHome,
+  vaultGoBack,
+  vaultNewFolder,
+  vaultUploadFile,
+  renameVaultItem,
+  deleteVaultItem,
+  downloadVaultItem,
+  renderVaultInspector,
+  emptyTrash,
+  renderTrashInspector,
+  restoreTrashItem,
+  permanentDeleteTrashItem,
+  musicGoHome,
+  musicGoBack,
+  musicNewFolder,
+  musicUploadFile,
+  renderMusicInspector,
+  playMusicItem,
+  renameMusicItem,
+  deleteMusicItem,
+  downloadMusicItem,
+  renderTimeline,
+  toggleAdvancedSearch,
+  toggleAutoBackup,
+  manualBackup,
+  downloadPythonServer,
+  toggleStripes
+});
+
+/* boot */
+openDB()
+  .then(()=>loadFS())
+  .catch(()=>false)
+  .finally(()=>{
+    // re-export view (it might be shadow-copied; keep navigation working)
+    Object.defineProperty(window, 'view', {
+      get(){ return view; },
+      set(v){ view = v; }
+    });
+    render();
+    runSelfTests();
+  });
+
+/* ---------------------------
+   Prevent browser from opening dropped files
+   --------------------------- */
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  document.body.classList.add('dragging-files');
+});
+
+window.addEventListener('dragleave', (e) => {
+  // Only remove if leaving the window entirely
+  if(e.clientX === 0 && e.clientY === 0){
+    document.body.classList.remove('dragging-files');
+  }
+});
+
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  document.body.classList.remove('dragging-files');
+  
+  // Only handle if files are dropped
+  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0){
+    const files = Array.from(e.dataTransfer.files);
+    
+    // Determine where to upload based on current view
+    if(view === 'music'){
+      // Upload to music library (audio files only)
+      const audioFiles = files.filter(f => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        return ['mp3','wav','ogg','m4a','flac','aac'].includes(ext);
+      });
+      
+      if(audioFiles.length < files.length){
+        alert(`⚠️ Only audio files allowed in Music! ${files.length - audioFiles.length} file(s) skipped.`);
+      }
+      
+      currentMusicFolder.children = currentMusicFolder.children || [];
+      audioFiles.forEach(file => {
+        currentMusicFolder.children.push({
+          id: uid(),
+          name: file.name,
+          type: 'file',
+          file: file
+        });
+      });
+      
+      scheduleSave();
+      updateMusicGrid();
+      alert(`✅ Uploaded ${audioFiles.length} song(s) to Music!`);
+      
+    } else if(view === 'vault' && vaultUnlocked){
+      // Upload to vault
+      currentVaultFolder.children = currentVaultFolder.children || [];
+      files.forEach(file => {
+        currentVaultFolder.children.push({
+          id: uid(),
+          name: file.name,
+          type: 'file',
+          file: file
+        });
+      });
+      
+      scheduleSave();
+      updateVaultGrid();
+      alert(`✅ Uploaded ${files.length} file(s) to Vault!`);
+      
+    } else if(view === 'files'){
+      // Upload to files (default)
+      currentFolder.children = currentFolder.children || [];
+      for(const file of files){
+        const existing = currentFolder.children.find(x => x.name === file.name && x.type === 'file');
+        if(existing){
+          if(!confirm(`"${file.name}" already exists. Replace it?`)) continue;
+          existing.file = file;
+        } else {
+          currentFolder.children.push({
+            id: uid(),
+            name: file.name,
+            type: 'file',
+            file: file
+          });
+        }
+      }
+      
+      scheduleSave();
+      updateFileGrid();
+      renderInspector();
+      alert(`✅ Uploaded ${files.length} file(s) to Files!`);
+      
+    } else {
+      // Default: upload to Files section for any other view
+      currentFolder.children = currentFolder.children || [];
+      for(const file of files){
+        const existing = currentFolder.children.find(x => x.name === file.name && x.type === 'file');
+        if(existing){
+          if(!confirm(`"${file.name}" already exists. Replace it?`)) continue;
+          existing.file = file;
+        } else {
+          currentFolder.children.push({
+            id: uid(),
+            name: file.name,
+            type: 'file',
+            file: file
+          });
+        }
+      }
+      
+      scheduleSave();
+      updateFileGrid();
+      renderInspector();
+      alert(`✅ Uploaded ${files.length} file(s) to Files!`);
+    }
+  }
+});
+
+</script>
+</body>
+</html>
