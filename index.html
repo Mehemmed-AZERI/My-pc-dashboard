@@ -5105,10 +5105,22 @@ import uvicorn
 # =========================
 PORT = 45831
 SECRET_TOKEN = "mehemmed"
-UPLOAD_DIR = "uploads"
+
+# Create data directory on Desktop
+DESKTOP = Path.home() / "Desktop"
+DATA_DIR = DESKTOP / "MyPCDash"
+UPLOAD_DIR = DATA_DIR / "uploads"
+DB_PATH = DATA_DIR / "chat.db"
+
+# Create directories
+DATA_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(exist_ok=True)
+
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+log(f"Server data directory: {DATA_DIR}")
+log(f"Database: {DB_PATH}")
+log(f"Uploads: {UPLOAD_DIR}")
 
 # =========================
 # APP
@@ -5145,53 +5157,58 @@ def safe_filename(filename: str) -> str:
 # =========================
 # DATABASE
 # =========================
-db = sqlite3.connect("chat.db", check_same_thread=False)
+db = sqlite3.connect(str(DB_PATH), check_same_thread=False)
 cur = db.cursor()
 
-# Check if old schema exists and migrate
-try:
-    cur.execute("SELECT type FROM messages LIMIT 1")
-except sqlite3.OperationalError:
-    # Old schema detected - migrate it
-    log("Migrating old database schema...")
-    
-    # Backup old table
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS messages_old AS 
-        SELECT * FROM messages
-    """)
-    
-    # Drop old table
-    cur.execute("DROP TABLE IF EXISTS messages")
-    
-    # Create new table with updated schema
-    cur.execute("""
-    CREATE TABLE messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT,
-        sender TEXT,
-        receiver TEXT,
-        text TEXT,
-        filename TEXT,
-        stored_filename TEXT,
-        filesize INTEGER,
-        mime_type TEXT,
-        timestamp INTEGER
-    )
-    """)
-    
-    # Migrate old data (text messages only)
+# Check if messages table exists
+cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='messages'")
+table_exists = cur.fetchone() is not None
+
+if table_exists:
+    # Check if old schema exists and migrate
     try:
+        cur.execute("SELECT type FROM messages LIMIT 1")
+    except sqlite3.OperationalError:
+        # Old schema detected - migrate it
+        log("Migrating old database schema...")
+        
+        # Backup old table
         cur.execute("""
-            INSERT INTO messages (type, sender, receiver, text, timestamp)
-            SELECT 'message', sender, receiver, text, timestamp
-            FROM messages_old
+            CREATE TABLE IF NOT EXISTS messages_old AS 
+            SELECT * FROM messages
         """)
-        log("Migration complete!")
-    except:
-        log("No old data to migrate")
-    
-    db.commit()
+        
+        # Drop old table
+        cur.execute("DROP TABLE IF EXISTS messages")
+        
+        # Create new table with updated schema
+        cur.execute("""
+        CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            sender TEXT,
+            receiver TEXT,
+            text TEXT,
+            filename TEXT,
+            stored_filename TEXT,
+            filesize INTEGER,
+            mime_type TEXT,
+            timestamp INTEGER
+        )
+        """)
+        
+        # Migrate old data (text messages only)
+        try:
+            cur.execute("""
+                INSERT INTO messages (type, sender, receiver, text, timestamp)
+                SELECT 'message', sender, receiver, text, timestamp
+                FROM messages_old
+            """)
+            log("Migration complete!")
+        except:
+            log("No old data to migrate")
+        
+        db.commit()
 
 # Create tables if they don't exist
 cur.execute("""
@@ -5339,7 +5356,7 @@ async def websocket_endpoint(ws: WebSocket, username: str, token: str):
                 ts = data.get("time", now())
 
                 safe_name = f"{ts}_{filename}"
-                path = os.path.join(UPLOAD_DIR, safe_name)
+                path = UPLOAD_DIR / safe_name
 
                 try:
                     file_data = base64.b64decode(b64)
@@ -5382,12 +5399,12 @@ async def websocket_endpoint(ws: WebSocket, username: str, token: str):
 def download_file(filename: str):
     # Security: prevent path traversal
     filename = safe_filename(filename)
-    path = os.path.join(UPLOAD_DIR, filename)
+    path = UPLOAD_DIR / filename
     
-    if not os.path.isfile(path):
+    if not path.is_file():
         return {"error": "file not found"}
     
-    return FileResponse(path, filename=filename)
+    return FileResponse(str(path), filename=filename)
 
 # =========================
 # RUN
