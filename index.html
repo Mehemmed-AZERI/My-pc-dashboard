@@ -2846,7 +2846,17 @@ function chatUrl(){
   const port = (chatPort && String(chatPort).trim()) ? String(chatPort).trim() : '45831';
   const name = encodeURIComponent(chatName || '');
   const token = encodeURIComponent(chatToken || '');
-  return `ws://${host}:${port}/ws/${name}/${token}`;
+  
+  // Use WSS if page is HTTPS, otherwise WS
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  
+  // If using WSS, don't include port (ngrok/https handles it)
+  // Also check for common HTTPS ports: 443, or if using ngrok-like domain
+  if(protocol === 'wss' || port === '443' || host.includes('ngrok')){
+    return `wss://${host}/ws/${name}/${token}`;
+  }
+  
+  return `${protocol}://${host}:${port}/ws/${name}/${token}`;
 }
 
 function connectChat(){
@@ -5118,10 +5128,6 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
 
-log(f"Server data directory: {DATA_DIR}")
-log(f"Database: {DB_PATH}")
-log(f"Uploads: {UPLOAD_DIR}")
-
 # =========================
 # APP
 # =========================
@@ -5153,6 +5159,11 @@ def log(msg):
 def safe_filename(filename: str) -> str:
     """Remove path components to prevent directory traversal"""
     return os.path.basename(filename)
+
+# Log server configuration
+log(f"Server data directory: {DATA_DIR}")
+log(f"Database: {DB_PATH}")
+log(f"Uploads: {UPLOAD_DIR}")
 
 # =========================
 # DATABASE
